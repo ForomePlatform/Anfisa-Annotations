@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 parser = ArgumentParser(
     description = "Data ingestion utiities")
 parser.add_argument("--mode", "-m",
-    help = "Mode: hg19/hg38/gerp/gnomad/pharmgkb/gtech/dbnsfp4/...")
+    help = "Mode: gtf/pharmgkb/gtex/clinvar")
 parser.add_argument("config", nargs = 1)
 
 args = parser.parse_args()
@@ -21,56 +21,7 @@ std_db_host    = config["db.host"]
 std_db_port    = config["db.port"]
 std_user       = config["db.user"]
 std_password   = config["db.password"]
-
-#========================================
-if args.mode == "hg19":
-    from hg19 import ingestHg19
-    ingestHg19(
-        db_host    = config.get("hg19.db.host", std_db_host),
-        db_port    = config.get("hg19.db.port", std_db_port),
-        user       = config.get("hg19.db.user", std_user),
-        password   = config.get("hg19.db.password", std_password),
-        database   = config["hg19.database"],
-        fasta_file = config["hg19.fasta_file"])
-    sys.exit()
-
-#========================================
-if args.mode == "hg38":
-    from hg38 import ingestHg38
-    ingestHg38(
-        db_host    = config.get("hg38.db.host", std_db_host),
-        db_port    = config.get("hg38.db.port", std_db_port),
-        user       = config.get("hg38.db.user", std_user),
-        password   = config.get("hg38.db.password", std_password),
-        database   = config["hg38.database"],
-        fasta_file = config["hg38.fasta_file"])
-    sys.exit()
-
-#========================================
-if args.mode == "gerp":
-    from gerp import ingestGERP
-    ingestGERP(
-        db_host    = config.get("gerp.db.host", std_db_host),
-        db_port    = config.get("gerp.db.port", std_db_port),
-        user       = config.get("gerp.db.user", std_user),
-        password   = config.get("gerp.db.password", std_password),
-        database   = config["gerp.database"],
-        batch_size = config["gerp.batch_size"],
-        file_list  = config["gerp.file_list"])
-    sys.exit()
-
-#========================================
-if args.mode == "gnomad":
-    from gnomad211 import ingestGnomAD
-    ingestGnomAD(
-        db_host    = config.get("gnomad.db.host", std_db_host),
-        db_port    = config.get("gnomad.db.port", std_db_port),
-        user       = config.get("gnomad.db.user", std_user),
-        password   = config.get("gnomad.db.password", std_password),
-        database   = config["gnomad.database"],
-        batch_size = config["gnomad.batch_size"],
-        file_list  = config["gnomad.file_list"])
-    sys.exit()
+std_database   = config.get("database")
 
 #========================================
 if args.mode == "pharmgkb":
@@ -186,6 +137,19 @@ if args.mode == "pharmgkb":
     sys.exit()
 
 #========================================
+if args.mode == "gtf":
+    from gtf import ingestGTF
+    ingestGTF(
+        db_host    = config.get("gtf.db.host", std_db_host),
+        db_port    = config.get("gtf.db.port", std_db_port),
+        user       = config.get("gtf.db.user", std_user),
+        password   = config.get("gtf.db.password", std_password),
+        database   = config["gtf.database"],
+        batch_size = config["gtf.batch_size"],
+        filename  = config["gtf.filename"])
+    sys.exit()
+
+#========================================
 if args.mode == "gtex":
     from gtex import ingestGTEX
     ingestGTEX(
@@ -196,32 +160,6 @@ if args.mode == "gtex":
         database   = config["gtex.database"],
         batch_size = config["gtex.batch_size"],
         filename  = config["gtex.filename"])
-    sys.exit()
-
-#========================================
-if args.mode == "spliceai":
-    from spliceai import ingestSpliceAI
-    ingestSpliceAI(
-        db_host    = config.get("spliceai.db.host", std_db_host),
-        db_port    = config.get("spliceai.db.port", std_db_port),
-        user       = config.get("spliceai.db.user", std_user),
-        password   = config.get("spliceai.db.password", std_password),
-        database   = config["spliceai.database"],
-        batch_size = config["spliceai.batch_size"],
-        file_list  = config["spliceai.file_list"])
-    sys.exit()
-
-#========================================
-if args.mode == "dbnsfp4":
-    from dbnsfp4 import ingestDBNSFP4
-    ingestDBNSFP4(
-        db_host    = config.get("dbnsfp4.db.host", std_db_host),
-        db_port    = config.get("dbnsfp4.db.port", std_db_port),
-        user       = config.get("dbnsfp4.db.user", std_user),
-        password   = config.get("dbnsfp4.db.password", std_password),
-        database   = config["dbnsfp4.database"],
-        batch_size = config["dbnsfp4.batch_size"],
-        file_list  = config["dbnsfp4.file_list"])
     sys.exit()
 
 #========================================

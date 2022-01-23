@@ -114,6 +114,7 @@ class TabScanner:
         for fields in cur.fetchall():
             count += 1
             self.processOne(fields)
+        cur.close()
         if count > 0:
             for writer in self.mTabWriters:
                 writer.flush()

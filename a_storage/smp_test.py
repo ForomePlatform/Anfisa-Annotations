@@ -14,7 +14,7 @@ parser.add_argument("-c", "--config",
     help = "AStrorage configuration file",
     default = "astorage.cfg")
 parser.add_argument("-m", "--mode", default = "simple",
-    help = 'Modes: simple/bulk')
+    help = 'Modes: simple/bulk/check-any')
 parser.add_argument("-s", "--schema", help = "Schema name")
 parser.add_argument("-a", "--array", help = "Array name")
 parser.add_argument("-u", "--url", help = "Service url",
@@ -28,8 +28,8 @@ parser.add_argument("--tasks", type = int, default = 1000,
 args = parser.parse_args()
 config = loadJSonConfig(args.config)
 
-assert args.mode in ("simple", "bulk", "last"), (
-    "Improper mode %s, must be simple or bulk" % args.mode)
+assert args.mode in ("simple", "bulk", "check-last"), (
+    "Improper mode %s, must be simple, bulk (or check-last)" % args.mode)
 
 date_started = datetime.now()
 logging.info("Started at " + str(date_started))
@@ -128,9 +128,18 @@ for array_name, array_info in config["service"]["arrays"].items():
         sSmpSeq.append(SchemaSmpH(config, array_name, schema_name,
             s_info.get("dbname", schema_name), args.mode != "simple"))
 
+if len(sSmpSeq) == 0:
+    opt_rep = []
+    if args.array:
+        opt_rep.append("array=" + args.array)
+    if args.schema:
+        opt_rep.append("schema=" + args.schema)
+    logging.fatal("No schema selected for options " + " ".join(opt_rep))
+    sys.exit()
+
 rest_agent = RestAgent(args.url, "AStorage")
 
-if args.mode == "last":
+if args.mode == "check-last":
     r_h = Random()
     schema_idx = r_h.randint(0, len(sSmpSeq) - 1)
     smp_h = sSmpSeq[schema_idx]
