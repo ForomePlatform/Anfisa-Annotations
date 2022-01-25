@@ -35,7 +35,7 @@ Mode gtf
 --------
 Gencode GTF
 * Project URL: [https://www.gencodegenes.org/pages/data_format.html](https://www.gencodegenes.org/pages/data_format.html)
-* Downloads URL: [https://www.pharmgkb.org/downloads](https://www.pharmgkb.org/downloads)
+** Downloads URL: [http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/](http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/)
 * Direct download URL: [ftp://ftp.ensembl.org/pub/release-105/gtf/homo_sapiens/Homo_sapiens.GRCh38.105.chr.gtf.gz](ftp://ftp.ensembl.org/pub/release-105/gtf/homo_sapiens/Homo_sapiens.GRCh38.105.chr.gtf.gz)
 
 
