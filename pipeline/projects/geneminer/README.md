@@ -23,7 +23,7 @@ We use the full data downloaded from this site in JSON-form: hgnc_complete_set.j
 
 # Build index
 
-> python3 make_index.py > gtf_rev.txt
+    > python3 make_index.py > gtf_rev.txt
 
 Default options for this utility assume that the files **gtf_genes.txt** and **hghgnc_complete_set.json** (see above) are prepared and llocated in the current directory. The result file gtf_ref.txt is index.
 
@@ -33,12 +33,14 @@ We use simple text format for gene panels: each symbol should be located in sepa
 There could be comments in the text file, with leading '#' symbol. There can be inline comments or full line comments. Inline comments are ignored in parsing, full line comments are kept in processing.
 
 There are two special form for coment line, with leading two symbols '##', used for mark ID of pannel and references
- ## ID: <id>
- ## http<...>
+
+    ## ID: ...
+    
+    ## http...
 
 # Processing panel file
 
-> python3 up_pannel.py <pannel input name> > <panel output name>
+    > python3 up_pannel.py {pannel_input_name} > {panel_output_name}
 
 The script can be run from any directory, the index by default is the file **gtf_rev.txt** that should be located in the same directory as up_pannel.py. 
 
