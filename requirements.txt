@@ -5,7 +5,7 @@ fastnumbers==3.0.0
 humanfriendly==8.2
 lxml==4.6.2
 mysql-connector-python==8.0.20
-numpy==1.18.5
+numpy==1.21.0
 pyliftover==0.4
 PyVCF==0.6.8
 uWSGI==2.0.18
