@@ -3,81 +3,123 @@
 #       in db gtex and inserts data into them
 #
 
-import gzip
-from operator import itemgetter
+import gzip, time
 from io import TextIOWrapper
 import mysql.connector
-import time
+from collections import defaultdict
 
 from util import execute_insert, reportTime
 
 #=== table GENE ============
 
-INSTR_CREATE_GENE = """CREATE TABLE IF NOT EXISTS GTexGENE(
-    GeneName       VARCHAR(24),
-    Description    VARCHAR(19),
+INSTR_CREATE_GENE = """CREATE TABLE IF NOT EXISTS GTex_GENE(
+    GeneId         VARCHAR(24),
+    SubId          VARCHAR(19),
+    Symbol         VARCHAR(19),
     TopT1          INT(2),
     TopT2          INT(2),
     TopT3          INT(2),
-    PRIMARY KEY(GeneName));"""
+    KEY `Symbol` (Symbol),
+    PRIMARY KEY(GeneId, SubId));"""
 
 COLUMNS_GENE = [
-    "GeneName",
-    "Description",
+    "GeneId",
+    "SubId",
+    "Symbol",
     "TopT1",
     "TopT2",
-    "TopT3"
-    ]
+    "TopT3"]
 
 #=== table TISSUE ============
-INSTR_CREATE_TISSUE = """CREATE TABLE IF NOT EXISTS GTexTISSUE(
+INSTR_CREATE_TISSUE = """CREATE TABLE IF NOT EXISTS GTex_TISSUE(
     TissueNo        INT(2),
     Name            VARCHAR(41),
     PRIMARY KEY(TissueNo));"""
 
 COLUMNS_TISSUE = [
     "TissueNo",
-    "Name"
-    ]
+    "Name"]
 
 #=== table GENE2TISSUE ============
-INSTR_CREATE_GENE2TISSUE = """CREATE TABLE IF NOT EXISTS GTexGENE2TISSUE(
-    GeneName         VARCHAR(24),
+INSTR_CREATE_GENE2TISSUE = """CREATE TABLE IF NOT EXISTS GTex_GENE2TISSUE(
+    GeneId           VARCHAR(24),
+    SubId            VARCHAR(19),
     TissueNo         INT(2),
     Expression       FLOAT,
-    RelExp          FLOAT,
-    PRIMARY KEY(GeneName, TissueNo));"""
+    RelExp           FLOAT,
+    PRIMARY KEY(GeneId, SubId, TissueNo));"""
 
 COLUMNS_GENE2TISSUE = [
-    "GeneName",
+    "GeneId",
+    "SubId",
     "TissueNo",
     "Expression",
-    "RelExp"
-    ]
+    "RelExp"]
+
 #================================================
-INSTR_INSERT_GENE = "INSERT INTO GTexGENE (%s) VALUES (%s)" % (
+INSTR_INSERT_GENE = "INSERT INTO GTex_GENE (%s) VALUES (%s)" % (
     ", ".join(COLUMNS_GENE),
     ", ".join(['%s' for _ in COLUMNS_GENE]))
 
-INSTR_INSERT_TISSUE = "INSERT INTO GTexTISSUE (%s) VALUES (%s)" % (
+INSTR_INSERT_TISSUE = "INSERT INTO GTex_TISSUE (%s) VALUES (%s)" % (
     ", ".join(COLUMNS_TISSUE),
     ", ".join(['%s' for _ in COLUMNS_TISSUE]))
 
-INSTR_INSERT_GENE2TISSUE = "INSERT INTO GTexGENE2TISSUE (%s) VALUES (%s)" % (
+INSTR_INSERT_GENE2TISSUE = "INSERT INTO GTex_GENE2TISSUE (%s) VALUES (%s)" % (
     ", ".join(COLUMNS_GENE2TISSUE),
     ", ".join(['%s' for _ in COLUMNS_GENE2TISSUE]))
+
 #========================================
-def new_record(gen, gname, top1, top2, top3):
-    rec = []
-    rec.append(gen)
-    rec.append(gname)
-    rec.append(top1[1])
-    for top in [top2, top3]:
-        if top[0] == 0:
-            rec.append(None)
-        else:
-            rec.append(top[1])
+def parseGeneId(gene_id_ext):
+    gene_id, _, sub_id = gene_id_ext.partition('.')
+    return gene_id, sub_id if sub_id else ''
+
+#========================================
+def fillTissues(conn, fields):
+    tissues = [(idx + 1, fields[idx])
+        for idx in range(2, len(fields))]
+    c = conn.cursor()
+    c.executemany(INSTR_INSERT_TISSUE, tissues)
+    print('TISSUE is done')
+
+#========================================
+def new_gene_record(rec_keys, expr_sheet):
+    rec = rec_keys[:]
+    for neg_expr, tissue_no in expr_sheet[:3]:
+        if neg_expr >= 0:
+            break
+        rec.append(tissue_no)
+    while len(rec) < len(rec_keys) + 3:
+        rec.append(None)
     return rec
+
+#========================================
+class GeneIdRegistry:
+    def __init__(self):
+        self.mReg = defaultdict(list)
+
+    def regOne(self, gene_id, sub_id):
+        self.mReg[gene_id].append(sub_id)
+
+    def checkAll(self):
+        cnt_multiple = 0
+        max_multiplication = 0
+        for gene_id in sorted(self.mReg.keys()):
+            sub_id_seq = self.mReg[gene_id]
+            assert sub_id_seq[0].isdigit, (
+                "Not a digital primary sub_id %s for %s"
+                % (sub_id_seq[0], gene_id))
+            if len(sub_id_seq) > 1:
+                sub_id_prefix = sub_id_seq[0] + '_'
+                assert all(sub_id.startswith(sub_id_prefix)
+                    for sub_id in sub_id_seq[1:]), (
+                    "Too complex sub_id seq for %s: %s"
+                    % (gene_id, str(sub_id_seq)))
+                cnt_multiple += 1
+                max_multiplication = max(
+                    max_multiplication, len(sub_id_seq))
+        print("Multiplication for sub_id: count = %d, max = %d"
+            % (cnt_multiple, max_multiplication))
 
 #========================================
 def ingestGTEX(db_host, db_port, user, password, database,
@@ -101,6 +143,8 @@ def ingestGTEX(db_host, db_port, user, password, database,
     print(INSTR_CREATE_GENE2TISSUE)
     curs.execute(INSTR_CREATE_GENE2TISSUE)
 
+    id_registry = GeneIdRegistry()
+
     with gzip.open(filename, 'rb') as inp:
         gene_records, gen2tis_records = [], []
         total_gene, total_gen2tis = 0, 0
@@ -110,45 +154,42 @@ def ingestGTEX(db_host, db_port, user, password, database,
         line_no = 0
         for line in text_inp:
             line_no += 1
-            fields = line.split('\t')
-            if len(fields) < 3:
-                assert line_no < 3
+            if line_no < 3:
                 continue
+            fields = line.rstrip().split('\t')
             if line_no == 3:
-                header = [fields[i].strip('\n') for i in range(len(fields))]
-                tissues = [(i+1, header[i]) for i in range(2, len(header))]
-                c = conn.cursor()
-                c.executemany(INSTR_INSERT_TISSUE, tissues)
+                fillTissues(conn, fields)
+                continue
+            expr_sheet = sorted((-float(fields[idx]), idx + 1)
+                for idx in range(2, len(fields)))
+            top_expr = - expr_sheet[0][0]
+            if top_expr <= 0:
+                continue
 
-                print('TISSUE is done')
-            if line_no > 3:
-                fields[-1] = fields[-1].strip('\n')
-                lin = [(-float(fields[i]), i+1)
-                    for i in range(2, len(fields))]
-                lin.sort(key = itemgetter(0))
-                if lin[0][0] == 0:
-                    continue
-                gene_records.append(new_record(
-                    fields[0], fields[1], lin[0], lin[1], lin[2]))
-                if len(gene_records) >= batch_size:
-                    total_gene += execute_insert(conn,
-                        INSTR_INSERT_GENE, gene_records)
-                    gene_records = []
-                    reportTime("Records_GENE", total_gene, start_time)
+            gene_id, sub_id = parseGeneId(fields[0])
+            symbol_name = fields[1]
+            id_registry.regOne(gene_id, sub_id)
 
-                top = lin[0][0]
-                for i in range(len(lin)):
-                    if lin[i][0] < 0:
-                        gen2tis_records.append([fields[0], lin[i][1],
-                            -lin[i][0], lin[i][0] / top])
-                    else:
-                        break
-                if len(gen2tis_records) >= batch_size:
-                    total_gen2tis += execute_insert(
-                        conn, INSTR_INSERT_GENE2TISSUE, gen2tis_records)
-                    gen2tis_records = []
-                    reportTime("Records_GTexGENE2TISSUE",
-                        total_gen2tis, start_time)
+            gene_records.append(new_gene_record(
+                [gene_id, sub_id, symbol_name], expr_sheet))
+            if len(gene_records) >= batch_size:
+                total_gene += execute_insert(conn,
+                    INSTR_INSERT_GENE, gene_records)
+                gene_records = []
+                reportTime("Records_GENE", total_gene, start_time)
+
+            for neg_expr, tissue_no in expr_sheet:
+                if neg_expr >= 0:
+                    break
+                expr = - neg_expr
+                gen2tis_records.append([gene_id, sub_id, tissue_no,
+                    expr, expr / top_expr])
+            if len(gen2tis_records) >= batch_size:
+                total_gen2tis += execute_insert(
+                    conn, INSTR_INSERT_GENE2TISSUE, gen2tis_records)
+                gen2tis_records = []
+                reportTime("Records_GTexGENE2TISSUE",
+                    total_gen2tis, start_time)
 
         if len(gene_records) >= 0:
             total_gene += execute_insert(conn,
@@ -158,8 +199,9 @@ def ingestGTEX(db_host, db_port, user, password, database,
             total_gen2tis += execute_insert(conn,
                 INSTR_INSERT_GENE2TISSUE, gen2tis_records)
             reportTime("Done_GTexGENE2TISSUE", total_gen2tis, start_time)
-    c.close()
     curs.close()
+    conn.close()
+    id_registry.checkAll()
 
 
 #========================================

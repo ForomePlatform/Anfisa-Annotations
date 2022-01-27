@@ -133,10 +133,12 @@ class _ReadBlock_PageCluster:
         chrom, pos = key
         assert self.mChrom == chrom
         if DEBUG_MODE:
-            logging.info("For key = %s block from %d-%d size = %s/%s"
-                % (str(key), self.mStartPos, self.mEndPos, str(len(self.mDataSeq))
-                    if self.mDataSeq is not None else "None", str(len(self.mPosSeq)
-                    if self.mPosSeq is not None else "None")))
+            logging.info("For key = %s block from %d-%d size = %s/%s" % (
+                str(key), self.mStartPos, self.mEndPos,
+                str(len(self.mDataSeq))
+                if self.mDataSeq is not None else "None",
+                str(len(self.mPosSeq)
+                if self.mPosSeq is not None else "None")))
         if self.mDataSeq is not None and pos in self.mPosSeq:
             return self.mDataSeq.get(self.mPosSeq.index(pos))
         return None

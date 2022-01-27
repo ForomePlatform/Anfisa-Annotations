@@ -112,12 +112,17 @@ class JoinedReader:
         return [min_key, res_seq]
 
 #=====================================
-def dumpReader(reader):
+def dumpReader(reader, indent_mode = False):
     for key, record in reader.read():
         print(json.dumps({"key": list(key)},
             ensure_ascii = False, sort_keys = True))
-        print(json.dumps(record,
-            ensure_ascii = False, sort_keys = True))
+        if indent_mode:
+            rep = json.dumps(record, indent = 4,
+                ensure_ascii = False, sort_keys = True)
+        else:
+            rep = json.dumps(record,
+                ensure_ascii = False, sort_keys = True)
+        print(rep)
 
 #========================================
 def writeDirect(reader, file_pattern, out_dir):
