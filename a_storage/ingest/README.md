@@ -40,7 +40,7 @@ Gencode GTF
 
 
 Mode spliceai
------------
+-------------
 SpliceAI
 
 * GitHub URL: [https://github.com/Illumina/SpliceAI](https://github.com/Illumina/SpliceAI)
