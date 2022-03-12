@@ -17,6 +17,8 @@ def loadHGNC(filename, gtf_genes, all_names):
         hgnc_data = json.loads(inp.read())
     hgnc_records = []
     for record in hgnc_data["response"]["docs"]:
+        if record["locus_group"] != "protein-coding gene":
+            continue
         sym = record["symbol"]
         alias_seq = record.get("alias_symbol", [])
         prev_seq = record.get("prev_symbol", [])
