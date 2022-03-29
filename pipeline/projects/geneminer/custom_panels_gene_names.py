@@ -51,7 +51,7 @@ def main(
             panel_df.to_csv(output_fp, index=False)
 
     if panel_fp is not None:
-        panel = pd.read_csv(panel_fp, header=None) #, dtype={0: str, 1: str, 2: str}, keep_default_na=False)
+        panel = pd.read_csv(panel_fp, header=None, comment="#", skip_blank_lines=True) #, dtype={0: str, 1: str, 2: str}, keep_default_na=False)
         panel.columns = ["gene_name", ]
         for i, gene in panel.iterrows():
             gene_name = gene["gene_name"]
@@ -91,7 +91,7 @@ def main(
                 }
 
             panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
-            panel_df.to_csv(output_fp, index=False)
+            panel_df.to_csv(output_fp, index=True)
 
             print("\n---------------------------------------------------------------\n")
 
