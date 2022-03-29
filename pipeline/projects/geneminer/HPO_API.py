@@ -35,7 +35,7 @@ def hpo_csv2ensembl(
         hpo_id, hpo_csv_fp,
         ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, hpo_name2id,
         confirm, do_not_confirm_coords):
-    hpo_genes_df = pd.read_csv(hpo_csv_fp, header=0)
+    hpo_genes_df = pd.read_csv(hpo_csv_fp, header=0, dtype={0: int, 1: str, 2: str})
     gene_entrez_ids = hpo_genes_df["GENE_ENTREZ_ID"]
     gene_entrez_names = hpo_genes_df["GENE_SYMBOL"]
     gene_entrez_names_set = set(gene_entrez_names)
@@ -70,7 +70,7 @@ def hpo2ensembl(
         ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, hpo_name2id,
         confirm, do_not_confirm_coords):
 
-    Entrez.email = "kseniya.petrova@phystech.edu"
+    Entrez.email = "some.email@gmail.com"
     handle = Entrez.efetch(db="gene", id=gene_entrez_ids, rettype="gb", retmode="xml")
     genes_entrez = Entrez.read(handle)
 
@@ -96,6 +96,9 @@ def hpo2ensembl(
             gene_ensembl_id_2_entrez_name[gene_ensembl_id] = gene_entrez_name
 
     for gene_entrez_name, gene_entrez_id in zip(gene_entrez_names, gene_entrez_ids):
+        if gene_entrez_name in hpo_name2id:
+            print(f"Gene name '{gene_entrez_name}' was already considered")
+            continue
         gene_handle = Entrez.esummary(db="gene", id=str(gene_entrez_id))
         gene_info = Entrez.read(gene_handle)['DocumentSummarySet']['DocumentSummary'][0]
         print(
@@ -162,15 +165,15 @@ def hpo2ensembl(
         gene_ensembl_id_2_entrez_name[gene_name_id] = gene_entrez_name
 
         # out.write(f"{gene_entrez_name}\t{gene_name_id}\n")
-        if gene_entrez_name in hpo_name2id:
-            hpo_name2id[gene_entrez_name]["source"] += f";{hpo_id}"
-        else:
-            hpo_name2id[gene_entrez_name] = {
-                "gene_name": gene_entrez_name,
-                "ensembl_gene_id": gene_name_id,
-                "source": hpo_id,
-                "ensembl_gene_name": ensembl_gene_name
-            }
+        # if gene_entrez_name in hpo_name2id:
+        #     hpo_name2id[gene_entrez_name]["source"] += f";{hpo_id}"
+        # else:
+        hpo_name2id[gene_entrez_name] = {
+            "gene_name": gene_entrez_name,
+            "ensembl_gene_id": gene_name_id,
+            "source": hpo_id,
+            "ensembl_gene_name": ensembl_gene_name
+        }
 
         print("\n---------------------------------------------------------------\n")
 

@@ -14,9 +14,16 @@ from pipeline.projects.geneminer.gene_name_negotiation import get_ensembl, get_h
 
 
 def main(
-        panel_fp, ontology_ids, ontology_fps, gtf_fp, hgnc_fp, output_fp, confirm, do_not_confirm_coords):
+        panel_fp, ontology_ids, ontology_fps, gtf_fp, hgnc_fp, output_fp,
+        confirm, do_not_confirm_coords, reanalyse):
 
-    panel_res = {}
+    if os.path.exists(output_fp) and not reanalyse:
+        panel_df = pd.read_csv(output_fp)
+        panel_df.set_index("gene_name", inplace=True)
+        panel_res = panel_df.to_dict(orient="index")
+    else:
+        panel_res = {}
+
     ensembl = get_ensembl(gtf_fp)
     hgnc = get_hgnc(hgnc_fp)
 
@@ -30,6 +37,8 @@ def main(
                 ontology_id,
                 ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, panel_res,
                 confirm=confirm, do_not_confirm_coords=do_not_confirm_coords)
+            panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
+            panel_df.to_csv(output_fp, index=False)
 
     if ontology_fps:
         for ontology_fp in ontology_fps:
@@ -38,23 +47,25 @@ def main(
                 ontology_id, ontology_fp,
                 ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, panel_res,
                 confirm=confirm, do_not_confirm_coords=do_not_confirm_coords)
+            panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
+            panel_df.to_csv(output_fp, index=False)
 
     if panel_fp is not None:
-        panel = pd.read_csv(panel_fp, header=0)
-
+        panel = pd.read_csv(panel_fp, header=None) #, dtype={0: str, 1: str, 2: str}, keep_default_na=False)
+        panel.columns = ["gene_name", ]
         for i, gene in panel.iterrows():
             gene_name = gene["gene_name"]
-            print(f"{gene['gene_name']}\n\t{gene['source']}\n\t{gene['additional_info']}")
+            print(f"{gene_name}\n")  # \t{gene['source']}\n\t{gene['additional_info']}")
 
             if gene_name in panel_res:
-                logger.error(f"Gene name '{gene_name}' is duplicated in panel gene list")
-                if "additional_info" in panel_res[gene_name]:
-                    panel_res[gene_name]["additional_info"] += \
-                    ";" + gene["additional_info"]
-                elif gene["additional_info"]:
-                    panel_res[gene_name]["additional_info"] = gene["additional_info"]
+                print(f"Gene name '{gene_name}' was already considered")
+                # if "additional_info" in panel_res[gene_name]:
+                #     panel_res[gene_name]["additional_info"] += \
+                #     ";" + gene["additional_info"]
+                # elif gene["additional_info"]:
+                #     panel_res[gene_name]["additional_info"] = gene["additional_info"]
 
-                panel_res[gene_name]["source"] += ";" + gene["source"]
+                # panel_res[gene_name]["source"] += ";" + gene["source"]
             else:
                 gene_result = search_and_negotiate(
                     gene_name,
@@ -74,15 +85,15 @@ def main(
                 panel_res[gene_name] = {
                     "gene_name": gene_name,
                     "ensembl_gene_id": ensembl_gene_id,
-                    "source": gene["source"],
+                    "source": panel_fp,
                     "ensembl_gene_name": ensembl_gene_name,
-                    "additional_info": gene["additional_info"]
+                    # "additional_info": gene["additional_info"]
                 }
 
-            print("\n---------------------------------------------------------------\n")
+            panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
+            panel_df.to_csv(output_fp, index=False)
 
-    panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
-    panel_df.to_csv(output_fp, index=False)
+            print("\n---------------------------------------------------------------\n")
 
 
 def parse_options():
@@ -144,6 +155,12 @@ def parse_options():
         action="store_true"
     )
 
+    parser.add_argument(
+        '--reanalyse',
+        help="If to reanalyse all panel genes if output already exists",
+        action="store_true"
+    )
+
     options = parser.parse_args()
 
     return options
@@ -174,5 +191,7 @@ if __name__ == "__main__":
         opts.hgnc_tsv_fp,
         opts.output,
         opts.confirm,
-        opts.do_not_confirm_coords)
+        opts.do_not_confirm_coords,
+        opts.reanalyse
+    )
 
