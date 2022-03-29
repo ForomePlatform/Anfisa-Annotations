@@ -38,7 +38,7 @@ def main(
                 ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, panel_res,
                 confirm=confirm, do_not_confirm_coords=do_not_confirm_coords)
             panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
-            panel_df.to_csv(output_fp, index=True)
+            panel_df.to_csv(output_fp, index=False)
 
     if ontology_fps:
         for ontology_fp in ontology_fps:
@@ -48,7 +48,7 @@ def main(
                 ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, panel_res,
                 confirm=confirm, do_not_confirm_coords=do_not_confirm_coords)
             panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
-            panel_df.to_csv(output_fp, index=True)
+            panel_df.to_csv(output_fp, index=False)
 
     if panel_fp is not None:
         panel = pd.read_csv(panel_fp, header=None, comment="#", skip_blank_lines=True) #, dtype={0: str, 1: str, 2: str}, keep_default_na=False)
@@ -91,7 +91,7 @@ def main(
                 }
 
             panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
-            panel_df.to_csv(output_fp, index=True)
+            panel_df.to_csv(output_fp, index=False)
 
             print("\n---------------------------------------------------------------\n")
 
