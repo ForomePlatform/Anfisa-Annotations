@@ -56,7 +56,7 @@ def search_gene_name(
 
     ensembl_db.loc[ensembl_db["gene_name"] == panel_gene_name, "relationship"] = "by gene_name"
 
-    gene_name_ensembl = ensembl_db.loc[~ensembl_db["relationship"].isna()]
+    gene_name_ensembl = ensembl_db.loc[~ensembl_db["relationship"].isna(), :].copy()
     return gene_name_ensembl
 
 
@@ -66,21 +66,32 @@ def gene_description(gene):
     :param gene:
     :return:
     """
+    coords_coincided = gene.loc['coords_coincidence'] if 'coords_coincidence' in gene else "unchecked"
+    matched = gene.loc['relationship'] if 'relationship' in gene else "somehow"
     return f"\tcoords:\tchr{gene.iloc[0]}:{gene.iloc[3]}-{gene.iloc[4]}\n" \
         f"\tdetails:\t{gene.iloc[8]}\n" \
-        f"\tmatched:\t{gene.loc['relationship']}"
+        f"\tcoords coincided:\t{coords_coincided}\n" \
+        f"\tmatched:\t{matched}"
 
 
-def get_confirmation(gene_name, gene_name_result, ensembl, confirm):
+def get_confirmation(gene_name, gene_name_result, ensembl, confirm, do_not_confirm_coords):
     """
     Just ask user is this gene was mapped in a right way (if --confirm option was provided)
+    :param do_not_confirm_coords:
     :param ensembl:
     :param confirm:
     :param gene_name:
     :param gene_name_result:
     :return:
     """
-    if confirm:
+    assert len(gene_name_result) == 1
+
+    if do_not_confirm_coords and gene_name_result.iloc[0]["coords_coincidence"]:
+        print(
+            f"Gene name '{gene_name}' was matched to the gene from GENCODE annotation:\n"
+            f"{gene_description(gene_name_result.iloc[0])}\n")
+
+    elif confirm:
         while 1:
             answer = input(
                 f"Gene name '{gene_name}' was matched to the gene from GENCODE annotation:\n"
@@ -100,18 +111,30 @@ def get_confirmation(gene_name, gene_name_result, ensembl, confirm):
             f"Gene name '{gene_name}' was matched to the gene from GENCODE annotation:\n"
             f"{gene_description(gene_name_result.iloc[0])}\n")
 
-    return gene_name_result.iloc[0]["gene_id"]
+    return gene_name_result.iloc[0]
 
 
-def choose_from_or_provide_id(gene_name, gene_name_result, ensembl, confirm):
+def choose_from_or_provide_id(gene_name, gene_name_result, ensembl, confirm, do_not_confirm_coords):
     """
     Ask user which gene is to be used from list of possibilities
+    :param do_not_confirm_coords:
     :param ensembl:
     :param confirm:
     :param gene_name:
     :param gene_name_result:
     :return:
     """
+    assert len(gene_name_result) > 1
+
+    if do_not_confirm_coords:
+        coords_coincided = gene_name_result.loc[
+            gene_name_result["coords_coincidence"], :]
+        if len(coords_coincided) == 1:
+            print(
+                f"Gene name '{gene_name}' was matched to the gene from GENCODE annotation:\n"
+                f"{gene_description(coords_coincided.iloc[0])}\n")
+            return get_confirmation(gene_name, coords_coincided, ensembl, confirm, do_not_confirm_coords)
+
     while 1:
         genes = '\n'.join([
             f"{i}. {gene_description(gene_name_result.iloc[i])}"
@@ -130,14 +153,14 @@ def choose_from_or_provide_id(gene_name, gene_name_result, ensembl, confirm):
         if re.match(r"\d+", answer):
             choice = int(answer)
             if 0 <= choice < len(gene_name_result):
-                gene = ensembl.iloc[[choice]]
-                return get_confirmation(gene_name, gene, ensembl, confirm)
+                gene = gene_name_result.iloc[[choice]]
+                return get_confirmation(gene_name, gene, ensembl, confirm, do_not_confirm_coords)
             else:
                 print(f"Invalid number '{choice}' was entered, please, try again")
         else:
             gene_name_result2 = ensembl.loc[ensembl["gene_id"] == answer, :]
             if len(gene_name_result2):
-                return get_confirmation(gene_name, gene_name_result2, ensembl, confirm)
+                return get_confirmation(gene_name, gene_name_result2, ensembl, confirm, do_not_confirm_coords)
             else:
                 print(f"No gene was found by id '{answer}', please, try again")
 
@@ -145,6 +168,7 @@ def choose_from_or_provide_id(gene_name, gene_name_result, ensembl, confirm):
 def provide_id(gene_name, ensembl, confirm):
     """
     Ask user to provide ensembl_gene_id for missing gene names
+    :param do_not_confirm_coords:
     :param confirm:
     :param gene_name:
     :param ensembl:
@@ -157,7 +181,7 @@ def provide_id(gene_name, ensembl, confirm):
         if answer:
             gene_name_result = ensembl.loc[ensembl["gene_id"] == answer, :]
             if len(gene_name_result):
-                return get_confirmation(gene_name, gene_name_result, ensembl, confirm)
+                return get_confirmation(gene_name, gene_name_result, ensembl, confirm, do_not_confirm_coords=False)
             else:
                 print(f"No gene was found by id '{answer}', please, try again")
         else:
@@ -233,6 +257,54 @@ def get_hgnc_symbols_map(hgnc_symbols):
     return hgnc_alias2s, hgnc_prev2s
 
 
+def search_and_negotiate(
+    gene_name,
+    ensembl,
+    hgnc_symbols,
+    hgnc_alias2s,
+    hgnc_prev2s,
+    confirm,
+    coords=None,
+    do_not_confirm_coords=False,
+):
+
+    gene_result = search_gene_name(
+        gene_name,
+        ensembl,
+        hgnc_symbols,
+        hgnc_alias2s,
+        hgnc_prev2s
+    )
+    if coords is not None:
+        coords_result = ensembl.loc[
+                        (ensembl.iloc[:, 0] == coords["chr"]) &
+                        (ensembl.iloc[:, 3] == coords["start"]) &
+                        (ensembl.iloc[:, 4] == coords["stop"]), :]
+        coords_result["coords_coincidence"] = True
+        if len(gene_result):
+            gene_result.loc[:, "coords_coincidence"] = False
+
+            gene_result.loc[
+                gene_result.index.isin(coords_result.index), "coords_coincidence"] = True
+
+            coords_result_unique = coords_result.loc[~coords_result.index.isin(gene_result.index),:]
+            coords_result_unique["coords_coincidence"] = True
+            gene_result = gene_result.append(coords_result_unique)
+        else:
+            gene_result = coords_result
+
+    if len(gene_result) == 1:
+        gene_result = get_confirmation(
+            gene_name, gene_result, ensembl, confirm, do_not_confirm_coords)
+    elif len(gene_result) > 1:
+        gene_result = choose_from_or_provide_id(
+            gene_name, gene_result, ensembl, confirm, do_not_confirm_coords)
+    else:
+        gene_result = provide_id(gene_name, ensembl, confirm)
+
+    return gene_result
+
+
 def negotiate_panel_gene_names(
         gene_panel_fp, ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, confirm):
 
@@ -256,33 +328,28 @@ def negotiate_panel_gene_names(
                         logger.error(f"Gene name '{gene_name}' is duplicated in panel gene list")
                         continue
 
-                    gene_name_result = search_gene_name(
+                    gene_result = search_and_negotiate(
                         gene_name,
                         ensembl,
                         hgnc_symbols,
                         hgnc_alias2s,
-                        hgnc_prev2s
+                        hgnc_prev2s,
+                        confirm
                     )
+                    ensembl_gene_id = gene_result["gene_id"]
+                    ensembl_name = gene_result["gene_name"]
 
-                    if len(gene_name_result) == 1:
-                        gene_name_id = get_confirmation(
-                            gene_name, gene_name_result, ensembl, confirm)
-                    elif len(gene_name_result) > 1:
-                        gene_name_id = choose_from_or_provide_id(gene_name, gene_name_result, ensembl, confirm)
-                    else:
-                        gene_name_id = provide_id(gene_name, ensembl, confirm)
-
-                    if gene_name_id:
-                        if gene_name_id in id2name:
+                    if ensembl_gene_id:
+                        if ensembl_gene_id in id2name:
                             logger.error(
-                                f"Ensemble gene id '{gene_name_id}' was already matched "
-                                f"to gene name {id2name[gene_name_id]} from this panel,"
+                                f"Ensemble gene id '{ensembl_gene_id}' was already matched "
+                                f"to gene name {id2name[ensembl_gene_id]} from this panel,"
                                 f"skipping '{gene_name}' from result")
                         else:
-                            name2id[gene_name] = gene_name_id
-                            id2name[gene_name_id] = gene_name
+                            name2id[gene_name] = ensembl_gene_id
+                            id2name[ensembl_gene_id] = gene_name
 
-                            res_lines.append(f"{gene_name}\t{gene_name_id}\n")
+                            res_lines.append(f"{gene_name}\t{ensembl_gene_id}\t{ensembl_name}\n")
 
                     print("\n---------------------------------------------------------------\n")
 
