@@ -35,7 +35,7 @@ def hpo_csv2ensembl(
         hpo_id, hpo_csv_fp,
         ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, hpo_name2id,
         confirm, do_not_confirm_coords):
-    hpo_genes_df = pd.read_csv(hpo_csv_fp, header=0, dtype={0: int, 1: str, 2: str})
+    hpo_genes_df = pd.read_csv(hpo_csv_fp, header=0, dtype={0: int, 1: str, 2: str}, sep="\t")
     gene_entrez_ids = hpo_genes_df["GENE_ENTREZ_ID"]
     gene_entrez_names = hpo_genes_df["GENE_SYMBOL"]
     gene_entrez_names_set = set(gene_entrez_names)
