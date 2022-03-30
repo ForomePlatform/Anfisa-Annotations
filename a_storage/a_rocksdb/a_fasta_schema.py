@@ -97,6 +97,9 @@ class AFastaSchema:
     def getSchemaDescr(self):
         return self.mSchemaDescr
 
+    def iterTypeNames(self):
+        return iter(self.mTypes.keys())
+
     def loadReader(self, reader):
         hg_type = reader.getName()
         tp_h = self.mTypes[hg_type]

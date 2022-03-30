@@ -1,4 +1,4 @@
-import logging, time, json
+import sys, logging, time, json
 from datetime import datetime
 from threading import Thread
 from argparse import ArgumentParser
@@ -14,7 +14,7 @@ parser.add_argument("-c", "--config",
     help = "AStrorage configuration file",
     default = "astorage.cfg")
 parser.add_argument("-m", "--mode", default = "simple",
-    help = 'Modes: simple/bulk')
+    help = 'Modes: simple/bulk/check-any')
 parser.add_argument("-s", "--schema", help = "Schema name")
 parser.add_argument("-a", "--array", help = "Array name")
 parser.add_argument("-u", "--url", help = "Service url",
@@ -28,8 +28,8 @@ parser.add_argument("--tasks", type = int, default = 1000,
 args = parser.parse_args()
 config = loadJSonConfig(args.config)
 
-assert args.mode in ("simple", "bulk"), (
-    "Improper mode %s, must be simple or bulk" % args.mode)
+assert args.mode in ("simple", "bulk", "check-last"), (
+    "Improper mode %s, must be simple, bulk (or check-last)" % args.mode)
 
 date_started = datetime.now()
 logging.info("Started at " + str(date_started))
@@ -72,17 +72,24 @@ class SchemaSmpH:
         chrom, pos = self.mSamples[idx][0]
         return 'get?array=%s&loc=%s:%d' % (self.mArrayName, chrom, pos)
 
-    def testPortion(self, rest_agent, smp_from, smp_to):
+    def testPortion(self, rest_agent, smp_from, smp_to,
+            special_last_mode = False):
         is_ok = True
         if self.mBulkMode:
             request = {"fasta": self.mFasta, "variants": []}
             for smp_idx in range(smp_from, smp_to):
                 chrom, pos = self.mSamples[smp_idx][0]
-                request["variants"].append({"chrom":chrom, "pos": pos})
+                request["variants"].append({"chrom": chrom, "pos": pos})
+                if special_last_mode:
+                    request["variants"][-1]["last"] = pos + 10
             response = rest_agent.call(request, "POST", "collect")
+            if special_last_mode:
+                print(json.dumps(response, sort_keys = True, indent = 4))
+                return True
             for test_rec, smp_idx in zip(response, range(smp_from, smp_to)):
                 is_ok &= self.testRec(smp_idx, test_rec)
         else:
+            assert not special_last_mode
             for smp_idx in range(smp_from, smp_to):
                 chrom, pos = self.mSamples[smp_idx][0]
                 test_rec = rest_agent.call(None, "GET",
@@ -119,9 +126,27 @@ for array_name, array_info in config["service"]["arrays"].items():
         if args.schema and schema_name != args.schema:
             continue
         sSmpSeq.append(SchemaSmpH(config, array_name, schema_name,
-            s_info.get("dbname", schema_name), args.mode == "bulk"))
+            s_info.get("dbname", schema_name), args.mode != "simple"))
+
+if len(sSmpSeq) == 0:
+    opt_rep = []
+    if args.array:
+        opt_rep.append("array=" + args.array)
+    if args.schema:
+        opt_rep.append("schema=" + args.schema)
+    logging.fatal("No schema selected for options " + " ".join(opt_rep))
+    sys.exit()
 
 rest_agent = RestAgent(args.url, "AStorage")
+
+if args.mode == "check-last":
+    r_h = Random()
+    schema_idx = r_h.randint(0, len(sSmpSeq) - 1)
+    smp_h = sSmpSeq[schema_idx]
+    smp_from = r_h.randint(0, len(smp_h))
+    smp_to = min(smp_from + 5, len(smp_h))
+    smp_h.testPortion(rest_agent, smp_from, smp_to, True)
+    sys.exit()
 
 #=====================================
 class TestRunner(Thread):

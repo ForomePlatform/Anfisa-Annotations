@@ -1,91 +1,167 @@
 import sys, gzip, logging
+from collections import Counter
 
 from .in_util import TimeReport, detectFileChrom, extendFileList, dumpReader
 #========================================
+# dbNSDP fields
+#========================================
+class FieldH:
+    sRolesLists = {role: [] for role in ("variant", "facet", "transcript")}
+    sKeyLists = {role: [] for role in ("variant", "facet", "transcript")}
+
+    @classmethod
+    def getRoleList(cls, role):
+        return cls.sRolesLists[role]
+
+    @classmethod
+    def getRoleKeys(cls, role):
+        return cls.sKeyLists[role]
+
+    @classmethod
+    def setupIndexes(cls, fields_idxs):
+        for fld_seq in cls.sRolesLists.values():
+            for fld in fld_seq:
+                fld._setDataIdx(fields_idxs)
+
+    def __init__(self, role, name, tp_norm = str,
+            opt = None, specific = None):
+        self.mRole = role
+        self.mName = name
+        self.mTpNorm = tp_norm
+        self.mOpt = opt
+        self.mSpec = specific
+        self.mDataIdx = None
+        self.sRolesLists[self.mRole].append(self)
+        if self.mSpec == "key":
+            self.sKeyLists[self.mRole].append(self.mName)
+
+    def getName(self):
+        return self.mName
+
+    def getRole(self):
+        return self.mRole
+
+    def getData(self, record):
+        return record[self.mDataIdx]
+
+    def normData(self, data):
+        if data == '.':
+            return None
+        if data == '-' and self.mTpNorm is float:
+            return None
+        return self.mTpNorm(data)
+
+    def fetchData(self, record):
+        return self.normData(self.getData(record))
+
+    def isSpec(self, spec):
+        return self.mSpec == spec
+
+    def _setDataIdx(self, fields_idxs):
+        self.mDataIdx = fields_idxs[self.mName]
+
+    def makeDescr(self):
+        ret = {"name": self.mName}
+        if self.mTpNorm == str:
+            ret["tp"] = "str"
+        elif self.mTpNorm == float or self.mTpNorm == int:
+            ret["tp"] = "num"
+        else:
+            assert False, ("No correct type for %s" % self.mName)
+        if self.mOpt is not None:
+            ret["opt"] = self.mOpt
+        return ret
+
+
+#========================================
+FieldH("variant", "ALT", opt = "gene", specific = "key")
+FieldH("variant", "REF", opt = "gene", specific = "key")
+FieldH("variant", "CADD_raw", float)
+FieldH("variant", "CADD_phred", float)
+FieldH("variant", "DANN_score", float)
+FieldH("variant", "DANN_rankscore", float)
+FieldH("variant", "Eigen_raw_coding", float)
+FieldH("variant", "Eigen_raw_coding_rankscore", float)
+FieldH("variant", "Eigen_phred_coding", float)
+FieldH("variant", "Eigen_PC_raw_coding", float)
+FieldH("variant", "Eigen_PC_raw_coding_rankscore", float)
+FieldH("variant", "Eigen_PC_phred_coding", float)
+FieldH("variant", "GTEx_V7_gene", opt = "repeat")
+FieldH("variant", "GTEx_V7_tissue")
+FieldH("variant", "Geuvadis_eQTL_target_gene")
+
+FieldH("facet", "CADD_raw_rankscore", float)
+FieldH("facet", "MetaLR_score", float)
+FieldH("facet", "MetaLR_rankscore", float)
+FieldH("facet", "MetaLR_pred", opt = "dict")
+FieldH("facet", "MutPred_score", float)
+FieldH("facet", "MutPred_rankscore", float)
+FieldH("facet", "MutPred_protID")
+FieldH("facet", "MutPred_AAchange")
+FieldH("facet", "MutPred_Top5features")
+FieldH("facet", "MPC_rankscore", float)
+FieldH("facet", "PrimateAI_score", float)
+FieldH("facet", "PrimateAI_rankscore", float)
+FieldH("facet", "PrimateAI_pred", opt = "dict")
+FieldH("facet", "REVEL_score", float)
+FieldH("facet", "SIFT_converted_rankscore", float)
+FieldH("facet", "SIFT4G_converted_rankscore", float)
+FieldH("facet", "MutationTaster_score")
+FieldH("facet", "MutationTaster_pred")
+
+FieldH("transcript", "refcodon", opt = "repeat")
+FieldH("transcript", "codonpos", int)
+
+FieldH("transcript", "Ensembl_transcriptid", opt = "repeat", specific = "key")
+FieldH("transcript", "Ensembl_geneid", opt = "repeat")
+FieldH("transcript", "Ensembl_proteinid", opt = "repeat")
+FieldH("transcript", "FATHMM_score", float)
+FieldH("transcript", "FATHMM_pred", opt = "dict")
+FieldH("transcript", "GENCODE_basic", opt = "dict")
+FieldH("transcript", "HGVSc_ANNOVAR")
+FieldH("transcript", "HGVSp_ANNOVAR")
+FieldH("transcript", "HGVSc_snpEff")
+FieldH("transcript", "HGVSp_snpEff")
+FieldH("transcript", "MPC_score", float)
+FieldH("transcript", "MutationAssessor_score", float)
+FieldH("transcript", "MutationAssessor_pred", opt = "dict")
+FieldH("transcript", "Polyphen2_HDIV_score", float)
+FieldH("transcript", "Polyphen2_HDIV_pred", opt = "dict")
+FieldH("transcript", "Polyphen2_HVAR_score", float)
+FieldH("transcript", "Polyphen2_HVAR_pred", opt = "dict")
+FieldH("transcript", "SIFT_score", float)
+FieldH("transcript", "SIFT_pred", opt = "dict")
+FieldH("transcript", "SIFT4G_score", float)
+FieldH("transcript", "SIFT4G_pred", opt = "dict")
+FieldH("transcript", "Uniprot_acc")
+
+#========================================
 # Schema for AStorage
 #========================================
+TRANSCRIPT_ITEMS = [fld.makeDescr()
+    for fld in FieldH.getRoleList("transcript")]
 
-_TRASCRIPT_PROPERTIES = [
-    {"name": "Ensembl_geneid",          "tp": "str", "opt": "repeat"},
-    {"name": "Ensembl_transcriptid",    "tp": "str", "opt": "repeat"},
-    {"name": "Ensembl_proteinid",       "tp": "str", "opt": "repeat"},
-    {"name": "refcodon",                "tp": "str", "opt": "repeat"},
-    {"name": "codonpos",                "tp": "str", "opt": "repeat"},
-    {"name": "FATHMM_score",            "tp": "num"},
-    {"name": "FATHMM_pred",             "tp": "str", "opt": "dict"},
-    {"name": "GENCODE_basic",           "tp": "str"},
-    {"name": "HGVSc_ANNOVAR",           "tp": "str"},
-    {"name": "HGVSp_ANNOVAR",           "tp": "str"},
-    {"name": "HGVSc_snpEff",            "tp": "str"},
-    {"name": "HGVSp_snpEff",            "tp": "str"},
-    {"name": "MPC_score",               "tp": "num"},
-    {"name": "MutationTaster_score",    "tp": "num"},
-    {"name": "MutationAssessor_pred",   "tp": "str", "opt": "dict"},
-    {"name": "Polyphen2_HDIV_score",    "tp": "num"},
-    {"name": "Polyphen2_HDIV_pred",     "tp": "str", "opt": "dict"},
-    {"name": "Polyphen2_HVAR_score",    "tp": "num"},
-    {"name": "Polyphen2_HVAR_pred",     "tp": "str", "opt": "dict"},
-    {"name": "SIFT_score",              "tp": "num"},
-    {"name": "SIFT_pred",               "tp": "str", "opt": "dict"},
-    {"name": "SIFT4G_score",            "tp": "num"},
-    {"name": "SIFT4G_pred",             "tp": "str", "opt": "dict"},
-    {"name": "Uniprot_acc",              "tp": "str"}
-]
-
-#===============================================
-_FACETS_PROPERTIES = [
-    {"name": "MetaLR_score",                "tp": "num"},
-    {"name": "MetaLR_rankscore",            "tp": "num"},
-    {"name": "MetaLR_pred", "opt": "dict",  "tp": "str"},
-    {"name": "MutPred_score",               "tp": "str"},
-    {"name": "MutPred_rankscore",           "tp": "num"},
-    {"name": "MutPred_protID",              "tp": "str"},
-    {"name": "MutPred_AAchange",            "tp": "str"},
-    {"name": "MutPred_Top5features",        "tp": "str"},
-    {"name": "MPC_rankscore",               "tp": "num"},
-    {"name": "PrimateAI_score",             "tp": "num"},
-    {"name": "PrimateAI_rankscore",         "tp": "num"},
-    {"name": "REVEL_score",                 "tp": "num"},
-    {"name": "SIFT4G_converted_rankscore",  "tp": "num"},
-    {
-        "name": "transcripts", "tp": "list",
+FACET_ITEMS = [fld.makeDescr()
+    for fld in FieldH.getRoleList("facet")] + [{
+        "name": "transcripts",
+        "tp": "list",
         "item": {
-            "tp": "dict", "items": _TRASCRIPT_PROPERTIES
+            "tp": "dict",
+            "items": TRANSCRIPT_ITEMS
         }
-    }
-]
+    }]
 
-#===============================================
-_VARIANT_PROPERTIES = [
-    {"name": "ALT", "tp": "str", "opt": "gene"},
-    {"name": "REF", "tp": "str", "opt": "gene"},
-    {"name": "CADD_raw",                        "tp": "num"},
-    {"name": "CADD_phred",                      "tp": "num"},
-    {"name": "DANN_score",                      "tp": "num"},
-    {"name": "DANN_rankscore",                  "tp": "num"},
-    {"name": "Eigen_raw_coding",                "tp": "num"},
-    {"name": "Eigen_raw_coding_rankscore",      "tp": "num"},
-    {"name": "Eigen_phred_coding",              "tp": "num"},
-    {"name": "Eigen_PC_raw_coding",             "tp": "num"},
-    {"name": "Eigen_PC_raw_coding_rankscore",   "tp": "num"},
-    {"name": "Eigen_PC_phred_coding",           "tp": "num"},
-    {"name": "GTEx_V7_gene",                "tp": "str", "opt": "repeat"},
-    {"name": "GTEx_V7_tissue",              "tp": "str"},
-    {"name": "MutationTaster_score",        "tp": "str"},
-    {"name": "MutationTaster_pred",         "tp": "str"},
-    {"name": "PrimateAI_pred",              "tp": "str", "opt": "dict"},
-    {"name": "Geuvadis_eQTL_target_gene",   "tp": "str"},
-    {
+VARIANT_ITEMS = [fld.makeDescr()
+    for fld in FieldH.getRoleList("variant")] + [{
         "name": "facets",
         "tp": "list",
         "item": {
             "tp": "dict",
-            "items": _FACETS_PROPERTIES
+            "items": FACET_ITEMS
         }
-    }
-]
+    }]
 
-#===============================================
+
 SCHEMA_DBNSFP_4 = {
     "name": "DBNSFP",
     "key": "hg38",
@@ -98,81 +174,10 @@ SCHEMA_DBNSFP_4 = {
         "tp": "list",
         "item": {
             "tp": "dict",
-            "items": _VARIANT_PROPERTIES
+            "items": VARIANT_ITEMS
         }
     }
 }
-
-#========================================
-# Ingest logic
-#========================================
-VARIANT_TAB = [
-    ["REF",                             str],
-    ["ALT",                             str],
-    ["MutationTaster_score",            str],
-    ["MutationTaster_pred",             str],
-    ["PrimateAI_pred",                  str],
-    ["CADD_raw",                        float],
-    ["CADD_phred",                      float],
-    ["DANN_score",                      float],
-    ["DANN_rankscore",                  float],
-    ["Eigen_raw_coding",                float],
-    ["Eigen_raw_coding_rankscore",      float],
-    ["Eigen_phred_coding",              float],
-    ["Eigen_PC_raw_coding",             float],
-    ["Eigen_PC_raw_coding_rankscore",   float],
-    ["Eigen_PC_phred_coding",           float],
-    ["GTEx_V7_gene",                    str],
-    ["GTEx_V7_tissue",                  str],
-    ["Geuvadis_eQTL_target_gene",       str]
-]
-
-#========================================
-FACET_TAB = [
-    ["refcodon",                    str],
-    ["codonpos",                    str],
-    ["SIFT4G_converted_rankscore",  float],
-    ["MetaLR_score",                float],
-    ["MetaLR_rankscore",            float],
-    ["MetaLR_pred",                 str],
-    ["REVEL_score",                 float],
-    ["MutPred_score",               str],
-    ["MutPred_rankscore",           float],
-    ["MutPred_protID",              str],
-    ["MutPred_AAchange",            str],
-    ["MutPred_Top5features",        str],
-    ["MPC_rankscore",               float],
-    ["PrimateAI_score",             float],
-    ["PrimateAI_rankscore",         float]
-]
-
-#========================================
-TRANSCRIPT_TAB = [
-    ["Ensembl_geneid",          str],
-    ["Ensembl_transcriptid",    str],
-    ["Ensembl_proteinid",       str],
-    ["Uniprot_acc",             str],
-    ["HGVSc_ANNOVAR",           str],
-    ["HGVSp_ANNOVAR",           str],
-    ["HGVSc_snpEff",            str],
-    ["HGVSp_snpEff",            str],
-    ["GENCODE_basic",           str],
-    ["SIFT_score",              float],
-    ["SIFT_pred",               str],
-    ["SIFT4G_score",            float],
-    ["SIFT4G_pred",             str],
-    ["Polyphen2_HDIV_score",    float],
-    ["Polyphen2_HDIV_pred",     str],
-    ["Polyphen2_HVAR_score",    float],
-    ["Polyphen2_HVAR_pred",     str],
-    ["MutationAssessor_score",  float],
-    ["MutationAssessor_pred",   str],
-    ["FATHMM_score",            float],
-    ["FATHMM_pred",             str],
-    ["MPC_score",               float]
-]
-
-ALL_TABS = [VARIANT_TAB, FACET_TAB, TRANSCRIPT_TAB]
 
 #========================================
 FLD_NAME_MAP = {
@@ -186,51 +191,21 @@ def _normFieldName(name):
     name = name.replace('-', '_')
     return FLD_NAME_MAP.get(name, name)
 
-#========================================
 def setupFields(field_line):
-    global ALL_TABS, FLD_NAME_MAP
+    global FLD_NAME_MAP
     assert field_line.startswith('#')
     field_names = field_line[1:].split()
     assert field_names[0].startswith("chr")
     assert field_names[1].startswith("pos")
-    fields_idxs = {_normFieldName(name): idx
-        for idx, name in enumerate(field_names)}
-    errors = 0
-    for tab in ALL_TABS:
-        for field_info in tab:
-            idx = fields_idxs.get(field_info[0])
-            if idx is None:
-                errors += 1
-                logging.error("No field registered: %s" % field_info[0])
-            else:
-                if len(field_info) == 2:
-                    field_info.append(idx)
-                else:
-                    field_info[2] = idx
-    if errors > 0:
-        logging.info("Available fields:\n=====\n"
-            + "\n".join(sorted(fields_idxs.keys())))
-    assert errors == 0
+    FieldH.setupIndexes({_normFieldName(name): idx
+        for idx, name in enumerate(field_names)})
+
 
 #========================================
-def iterFields(fields, properties_tab):
-    for name, tp, idx in properties_tab:
-        val = fields[idx]
-        if val == '.':
-            yield name, None
-        else:
-            yield name, tp(val)
+assert len(FieldH.getRoleKeys("transcript")) == 1, (
+    "Transcript keys:" + " ".join(FieldH.getRoleKeys("transcript")))
 
-def iterDeepFields(fields, properties_tab):
-    for name, tp, idx in properties_tab:
-        val_seq = []
-        for val in fields[idx].split(';'):
-            if val == '.':
-                val_seq.append(None)
-            else:
-                val_seq.append(tp(val))
-        yield name, val_seq
-
+TRANSCRIPT_KEY = FieldH.getRoleKeys("transcript")[0]
 #========================================
 class DataCollector:
     def __init__(self):
@@ -241,7 +216,6 @@ class DataCollector:
         return self.mCounts
 
     def ingestLine(self, line):
-        global VARIANT_TAB, FACET_TAB, TRANSCRIPT_TAB
         if line.endswith('\n'):
             line = line[:-1]
         fields = line.split('\t')
@@ -252,44 +226,144 @@ class DataCollector:
             new_record = True
         new_variant = new_record
 
-        var_data = dict()
-        for name, val in iterFields(fields, VARIANT_TAB):
-            var_data[name] = val
-            if not new_variant and val != self.mCurRecord[1][-1][name]:
-                new_variant = True
+        variant_data = {fld.getName(): fld.fetchData(fields)
+            for fld in FieldH.getRoleList("variant")}
 
-        facet_data = {name: val
-            for name, val in iterFields(fields, FACET_TAB)}
+        if not new_variant:
+            prev_var_data = self.mCurRecord[1][-1]
+            new_variant = any(
+                prev_var_data[name] != variant_data[name]
+                for name in FieldH.getRoleKeys("variant"))
+            if not new_variant:
+                for fld in FieldH.getRoleList("variant"):
+                    name = fld.getName()
+                    assert prev_var_data[name] == variant_data[name], (
+                        "Inequalty in variant field %s" % name)
 
-        tr_data_seq = None
-        for name, val_seq in iterDeepFields(fields, TRANSCRIPT_TAB):
-            if tr_data_seq is None:
-                tr_data_seq = [{name: val} for val in val_seq]
-            else:
-                for idx, val in enumerate(val_seq):
-                    tr_data_seq[idx][name] = val
-        if tr_data_seq is None:
-            tr_data_seq = []
-        facet_data["transcripts"] = tr_data_seq
-        self.mCounts[2] += len(tr_data_seq)
+        facet_data = {fld.getName(): fld.fetchData(fields)
+            for fld in FieldH.getRoleList("facet")}
+
+        transcript_collections = {fld.getName(): fld.getData(fields)
+            for fld in FieldH.getRoleList("transcript")}
+
+        transcript_data = [dict()
+            for _ in transcript_collections[TRANSCRIPT_KEY].split(';')]
+
+        for fld in FieldH.getRoleList("transcript"):
+            name = fld.getName()
+            values = transcript_collections[name].split(';')
+            if len(values) != len(transcript_data):
+                if fld.isSpec("same"):
+                    v0 = values[0]
+                    if len(values) > 0:
+                        if any(vv != v0 for vv in values[1:]):
+                            logging.error("Wrong tr field %s: %s/%d" % (name,
+                                transcript_collections[name],
+                                len(transcript_data)))
+                else:
+                    assert False, "Missing tr field %s" % name
+            for idx, vv in enumerate(values):
+                transcript_data[idx][name] = fld.normData(vv)
+        facet_data["transcripts"] = transcript_data
+        self.mCounts[2] += len(transcript_data)
         self.mCounts[1] += 1
 
         ret = None
         if new_record:
             self.mCounts[0] += 1
-            var_data["facets"] = [facet_data]
-            ret, self.mCurRecord = self.mCurRecord, [(chrom, pos), [var_data]]
+            variant_data["facets"] = [facet_data]
+            self.checkRecord()
+            ret, self.mCurRecord = self.mCurRecord, [
+                (chrom, pos), [variant_data]]
         elif new_variant:
             self.mCounts[0] += 1
-            var_data["facets"] = [facet_data]
-            self.mCurRecord[1].append(var_data)
+            variant_data["facets"] = [facet_data]
+            self.mCurRecord[1].append(variant_data)
         else:
             self.mCurRecord[1][-1]["facets"].append(facet_data)
 
         return ret
 
     def finishUp(self):
+        self.checkRecord()
         return self.mCurRecord
+
+    def checkRecord(self):
+        if not self.mCurRecord:
+            return
+        v_keys = set()
+        for v_data in self.mCurRecord[1]:
+            key = "|".join([v_data["REF"], v_data["ALT"]])
+            assert key not in v_keys, ("Dup key: %s" % key)
+            v_keys.add(key)
+            marks = set()
+            if len(v_data["facets"]) > 2:
+                marks.add("multi-facet-%d" % len(v_data["facets"]))
+            tr_counts = Counter()
+            for f_data in v_data["facets"]:
+                for t_data in f_data["transcripts"]:
+                    tr_counts[t_data[TRANSCRIPT_KEY]] += 1
+            dup_tr_id = []
+            for tr_id, cnt in tr_counts.items():
+                if cnt > 1:
+                    dup_tr_id.append(tr_id)
+            if len(dup_tr_id) > 0:
+                marks.add("multi-transcript-%d" % max(tr_counts.values()))
+                for tr_id in dup_tr_id:
+                    self.fixTranscritDup(v_data, tr_id)
+                #for idx in range(len(v_data["facets"])-1, -1, -1):
+                #    f_data = v_data["facets"][idx]
+                #    if len(f_data["transcripts"]) == 0:
+                #        del v_data["facets"][idx]
+            if len(marks) > 0:
+                logging.info("Complications at %s|%s: %s"
+                    % (str(self.mCurRecord[0]), key, " ".join(sorted(marks))))
+
+    def fixTranscritDup(self, v_data, tr_id):
+        tr_place_seq = []
+        for f_idx, f_data in enumerate(v_data["facets"]):
+            for t_idx, t_data in enumerate(f_data["transcripts"]):
+                if t_data[TRANSCRIPT_KEY] == tr_id:
+                    tr_place_seq.append([t_data, f_data, f_idx, t_idx])
+        while len(tr_place_seq) > 1:
+            t_data1 = tr_place_seq[0][0]
+            t_data2 = tr_place_seq[-1][0]
+            cnt1, cnt2 = 0, 0
+            res_data = dict()
+            for key, val1 in t_data1.items():
+                val2 = t_data2[key]
+                if val1 == val2:
+                    res_data[key] = val1
+                    continue
+                if val1 is None:
+                    res_data[key] = val2
+                    cnt2 += 1
+                    continue
+                if val2 is None:
+                    res_data[key] = val1
+                    cnt1 += 1
+                logging.info(
+                    "Failed to fix multi-transcript for %s: %d/%d %d/%d"
+                    % (tr_id, tr_place_seq[0][-2], tr_place_seq[0][-1],
+                        tr_place_seq[-1][-2], tr_place_seq[-1][-1]))
+                return
+            if cnt2 > cnt1:
+                t_data, f_data = tr_place_seq[-1][:2]
+                self._removeTranscript(*(tr_place_seq[0][:2]))
+                del tr_place_seq[0]
+            else:
+                t_data, f_data = tr_place_seq[0][:2]
+                self._removeTranscript(*(tr_place_seq[-1][:2]))
+                del tr_place_seq[-1]
+            if any(val != res_data[key] for key, val in t_data.items()):
+                logging.info("Joined multi-transcript: %s" % tr_id)
+                f_data["transcripts"][
+                    f_data["transcripts"].index(t_data)] = res_data
+
+    @staticmethod
+    def _removeTranscript(t_data, f_data):
+        tr_seq = f_data["transcripts"]
+        del tr_seq[tr_seq.index(t_data)]
 
 #========================================
 #========================================
@@ -338,4 +412,4 @@ def reader_dbNSFP4(properties, schema_h = None):
 if __name__ == '__main__':
     logging.root.setLevel(logging.INFO)
     reader = reader_dbNSFP4({"file_list": sys.argv[1]})
-    dumpReader(reader)
+    dumpReader(reader, indent_mode = True)

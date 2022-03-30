@@ -75,21 +75,24 @@ class AStorageApp:
 
     @classmethod
     def request(cls, serv_h, rq_path, rq_args, rq_descr):
+        report = None
         if rq_path == "/get":
             array_h = cls.sArrays.get(rq_args.get("array"))
             if array_h is None:
                 return serv_h.makeResponse("Array not found: "
                     + str(rq_args.get("array")), error = 404)
             report = array_h.request(rq_args, rq_descr)
-            return serv_h.makeResponse(mode = "json",
-                content = json.dumps(report))
-        if rq_path == "/collect":
+        elif rq_path == "/collect":
             report = cls.sCollect.request(rq_args, rq_descr)
-            return serv_h.makeResponse(mode = "json",
-                content = json.dumps(report))
-        if rq_path == "/meta":
-            return serv_h.makeResponse(mode = "json",
-                content = json.dumps(cls.sConfig["service"]["meta"]))
+        elif rq_path == "/meta":
+            report = cls.sConfig["service"]["meta"]
+        if report is not None:
+            if "indent" in rq_args:
+                cnt = json.dumps(report, indent = 4,
+                    sort_keys = True, ensure_ascii = False)
+            else:
+                cnt = json.dumps(report, ensure_ascii = False)
+            return serv_h.makeResponse(mode = "json", content = cnt)
         return serv_h.makeResponse("Page not found",
             error = 404)
 

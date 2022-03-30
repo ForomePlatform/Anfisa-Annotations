@@ -10,7 +10,8 @@ class AStorage:
         self.mDeepCompMode = deep_comp_mode
         self.mConnectors = dict()
         self.mActivators = []
-        self._checkNoFiles()
+        if not dummy_mode and not deep_comp_mode:
+            self._checkNoFiles()
 
     def _checkNoFiles(self):
         cur_limits = resource.getrlimit(resource.RLIMIT_NOFILE)
