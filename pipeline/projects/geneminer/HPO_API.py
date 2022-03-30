@@ -161,20 +161,17 @@ def hpo2ensembl(
                 raise Exception(
                     f"Nothing was found in ensembl db by id '{gene_entrez_name_2_ensembl_id[gene_entrez_name]}'")
 
-        gene_entrez_name_2_ensembl_id[gene_entrez_name] = gene_name_id
-        gene_ensembl_id_2_entrez_name[gene_name_id] = gene_entrez_name
+        if gene_name_id is not None:
+            gene_entrez_name_2_ensembl_id[gene_entrez_name] = gene_name_id
+            gene_ensembl_id_2_entrez_name[gene_name_id] = gene_entrez_name
 
-        # out.write(f"{gene_entrez_name}\t{gene_name_id}\n")
-        # if gene_entrez_name in hpo_name2id:
-        #     hpo_name2id[gene_entrez_name]["source"] += f";{hpo_id}"
-        # else:
-        hpo_name2id[gene_entrez_name] = {
-            "gene_name": gene_entrez_name,
-            "ensembl_gene_id": gene_name_id,
-            "source": hpo_id,
-            "ensembl_gene_name": ensembl_gene_name,
-            "additional_info": ""
-        }
+            hpo_name2id[gene_entrez_name] = {
+                "gene_name": gene_entrez_name,
+                "ensembl_gene_id": gene_name_id,
+                "source": hpo_id,
+                "ensembl_gene_name": ensembl_gene_name,
+                "additional_info": ""
+            }
 
         print("\n---------------------------------------------------------------\n")
 
