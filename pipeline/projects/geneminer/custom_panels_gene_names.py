@@ -80,17 +80,14 @@ def main(
                 if gene_result is not None:
                     ensembl_gene_id = gene_result["gene_id"]
                     ensembl_gene_name = ensembl.loc[ensembl["gene_id"] == ensembl_gene_id, "gene_name"].item()
-                else:
-                    ensembl_gene_id = None
-                    ensembl_gene_name = None
 
-                panel_res[gene_name] = {
-                    "gene_name": gene_name,
-                    "ensembl_gene_id": ensembl_gene_id,
-                    "source": gene_source,
-                    "ensembl_gene_name": ensembl_gene_name,
-                    "additional_info": gene_additional_info
-                }
+                    panel_res[gene_name] = {
+                        "gene_name": gene_name,
+                        "ensembl_gene_id": ensembl_gene_id,
+                        "source": gene_source,
+                        "ensembl_gene_name": ensembl_gene_name,
+                        "additional_info": gene_additional_info
+                    }
 
             checkpoint(panel_res, output_fp)
 
