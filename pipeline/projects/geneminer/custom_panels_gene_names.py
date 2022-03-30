@@ -56,7 +56,7 @@ def main(
         panel = pd.read_csv(panel_fp, header=0, comment="#", skip_blank_lines=True, dtype={0: str, 1: str, 2: str}, keep_default_na=False)
         # panel.columns = ["gene_name", ]
         for i, gene in panel.iterrows():
-            gene_name = gene["gene_name"]
+            gene_name = gene["gene_name"].strip()
             gene_source = gene["source"] if "source" in gene else ""
             gene_additional_info = gene["additional_info"] if "additional_info" in gene else ""
             print(f"{gene_name}\n\tsource: {gene_source}\n\tadditional_info: {gene_additional_info}")
