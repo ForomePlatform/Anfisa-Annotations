@@ -1,16 +1,20 @@
 import argparse
-import json
 import logging
 import os
 
 import colorlog
 import pandas as pd
-import requests
-from Bio import Entrez
 
 from pipeline.projects.geneminer.HPO_API import hpo_id2ensembl, hpo_csv2ensembl
 from pipeline.projects.geneminer.gene_name_negotiation import get_ensembl, get_hgnc, get_hgnc_symbols, \
-    get_hgnc_symbols_map, search_and_negotiate, get_confirmation
+    get_hgnc_symbols_map, search_and_negotiate
+
+
+def checkpoint(panel_res, output_fp):
+    panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
+    panel_df["gene_name"] = panel_df.index
+    panel_df = panel_df[['gene_name', 'ensembl_gene_name', 'ensembl_gene_id', 'source', 'additional_info']]
+    panel_df.to_csv(output_fp, index=False)
 
 
 def main(
@@ -37,8 +41,7 @@ def main(
                 ontology_id,
                 ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, panel_res,
                 confirm=confirm, do_not_confirm_coords=do_not_confirm_coords)
-            panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
-            panel_df.to_csv(output_fp, index=False)
+            checkpoint(panel_res, output_fp)
 
     if ontology_fps:
         for ontology_fp in ontology_fps:
@@ -47,25 +50,24 @@ def main(
                 ontology_id, ontology_fp,
                 ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, panel_res,
                 confirm=confirm, do_not_confirm_coords=do_not_confirm_coords)
-            panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
-            panel_df.to_csv(output_fp, index=False)
+            checkpoint(panel_res, output_fp)
 
     if panel_fp is not None:
-        panel = pd.read_csv(panel_fp, header=None, comment="#", skip_blank_lines=True) #, dtype={0: str, 1: str, 2: str}, keep_default_na=False)
-        panel.columns = ["gene_name", ]
+        panel = pd.read_csv(panel_fp, header=0, comment="#", skip_blank_lines=True, dtype={0: str, 1: str, 2: str}, keep_default_na=False)
+        # panel.columns = ["gene_name", ]
         for i, gene in panel.iterrows():
             gene_name = gene["gene_name"]
-            print(f"{gene_name}\n")  # \t{gene['source']}\n\t{gene['additional_info']}")
+            gene_source = gene["source"] if "source" in gene else ""
+            gene_additional_info = gene["additional_info"] if "additional_info" in gene else ""
+            print(f"{gene_name}\n\tsource: {gene_source}\n\tadditional_info: {gene_additional_info}")
 
             if gene_name in panel_res:
                 print(f"Gene name '{gene_name}' was already considered")
-                # if "additional_info" in panel_res[gene_name]:
-                #     panel_res[gene_name]["additional_info"] += \
-                #     ";" + gene["additional_info"]
-                # elif gene["additional_info"]:
-                #     panel_res[gene_name]["additional_info"] = gene["additional_info"]
+                if gene_additional_info:
+                    panel_res[gene_name]["additional_info"] += ";" + gene["additional_info"]
 
-                # panel_res[gene_name]["source"] += ";" + gene["source"]
+                if gene_source:
+                    panel_res[gene_name]["source"] += ";" + gene["source"]
             else:
                 gene_result = search_and_negotiate(
                     gene_name,
@@ -85,13 +87,12 @@ def main(
                 panel_res[gene_name] = {
                     "gene_name": gene_name,
                     "ensembl_gene_id": ensembl_gene_id,
-                    "source": panel_fp,
+                    "source": gene_source,
                     "ensembl_gene_name": ensembl_gene_name,
-                    # "additional_info": gene["additional_info"]
+                    "additional_info": gene_additional_info
                 }
 
-            panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
-            panel_df.to_csv(output_fp, index=False)
+            checkpoint(panel_res, output_fp)
 
             print("\n---------------------------------------------------------------\n")
 

@@ -172,7 +172,8 @@ def hpo2ensembl(
             "gene_name": gene_entrez_name,
             "ensembl_gene_id": gene_name_id,
             "source": hpo_id,
-            "ensembl_gene_name": ensembl_gene_name
+            "ensembl_gene_name": ensembl_gene_name,
+            "additional_info": ""
         }
 
         print("\n---------------------------------------------------------------\n")
