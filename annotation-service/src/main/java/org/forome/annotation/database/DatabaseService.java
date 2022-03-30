@@ -43,11 +43,16 @@ public class DatabaseService {
 		DBProvider dbProvider = new RocksDataBaseBuilder()
 				.withPath(dataPath.resolve("database"))
 				.build();
-		this.domainObjectSource = new DomainObjectSource(dbProvider);
 
-		Schema schema = new Schema.Builder()
-				.withDomain(UserReadable.class)
-				.build();
+		Schema schema;
+		if (Schema.exists(dbProvider)) {
+			schema = Schema.read(dbProvider);
+		} else {
+			schema = Schema.create(dbProvider);
+		}
+		Schema.resolve(UserReadable.class);
+
+		this.domainObjectSource = new DomainObjectSource(dbProvider);
 
 		new SchemaService(dbProvider)
 				.setNamespace("org.forome.annotation")
