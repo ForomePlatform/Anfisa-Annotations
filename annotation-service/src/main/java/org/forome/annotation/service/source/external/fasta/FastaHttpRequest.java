@@ -195,7 +195,9 @@ public class FastaHttpRequest {
 		} catch (InterruptedException e) {
 			throw new RuntimeException();
 		} catch (ExecutionException e) {
-			throw new RuntimeException(e.getCause());
+			String msg = "Exception connecting to " + url + ": " + e.getMessage ();
+			log.error (msg);
+			throw new RuntimeException(msg, e.getCause());
 		}
 	}
 

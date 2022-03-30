@@ -410,7 +410,11 @@ public class AnnotationConsole {
 				messageBuilder.append("Exception: ").append(ExceptionUtils.getStackTrace(throwable)).append('\n');
 			}
 
-			notificationService.send(messageBuilder.toString());
+			if (notificationService != null) {
+				notificationService.send (messageBuilder.toString ());
+			} else {
+				log.error (messageBuilder.toString ());
+			}
 		} catch (Throwable e) {
 			log.error("Exception send notification", e);
 		}

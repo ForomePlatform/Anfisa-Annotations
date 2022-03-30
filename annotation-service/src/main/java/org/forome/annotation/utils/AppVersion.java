@@ -35,6 +35,12 @@ public class AppVersion {
 			if (version == null) {
 				//Возможно это запуск из проекта
 				Path fileBuildGradle = Paths.get("build.gradle");
+				if (!Files.exists(fileBuildGradle))  {
+					String prjDir = System.getenv ("PRJ_DIR");
+					if (prjDir != null) {
+						fileBuildGradle = Paths.get (prjDir, "build.gradle");
+					}
+				}
 				if (Files.exists(fileBuildGradle)) {
 					try {
 						try (Stream<String> stream = Files.lines(fileBuildGradle)) {
