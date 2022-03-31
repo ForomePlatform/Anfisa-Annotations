@@ -10,6 +10,9 @@ from pipeline.projects.geneminer.gene_name_negotiation import get_ensembl, get_h
     get_hgnc_symbols_map, search_and_negotiate
 
 
+logger = logging.getLogger()
+
+
 def checkpoint(panel_res, output_fp):
     panel_df = pd.DataFrame.from_dict(panel_res, orient="index")
     panel_df["gene_name"] = panel_df.index
@@ -37,6 +40,7 @@ def main(
 
     if ontology_ids:
         for ontology_id in ontology_ids:
+            print(f"Loading genes by HPO id '{ontology_id}'")
             panel_res = hpo_id2ensembl(
                 ontology_id,
                 ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, panel_res,
@@ -45,6 +49,7 @@ def main(
 
     if ontology_fps:
         for ontology_fp in ontology_fps:
+            print(f"Loading genes from file '{ontology_fp}'")
             ontology_id = os.path.basename(ontology_fp).split(".")[-2].replace("_", ":")
             panel_res = hpo_csv2ensembl(
                 ontology_id, ontology_fp,
@@ -174,8 +179,6 @@ if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         handlers=[handler])
-
-    logger = logging.getLogger()
 
     # ontologyId = "HP:0003198"
     # gtf_fp = r"C:\Users\kseniya.petrova\projs\Anfisa\Homo_sapiens.GRCh38.105.chr.gtf"

@@ -2,20 +2,56 @@ import argparse
 import json
 import logging
 import os
+import sys
+import time
 
 import colorlog
 import pandas as pd
 import requests
 from Bio import Entrez
+from biomart import BiomartServer
 
 from pipeline.projects.geneminer.gene_name_negotiation import get_ensembl, get_hgnc, get_hgnc_symbols, \
-    get_hgnc_symbols_map, search_and_negotiate, get_confirmation
+    get_hgnc_symbols_map, search_and_negotiate, get_confirmation, choose_from_or_provide_id, provide_id
 
-
+logger = logging.getLogger()
 # ontologyId = "HP:0003198"
 
 # gene_response = requests.get(f"https://hpo.jax.org/api/hpo/gene/{genes[0]['entrezGeneId']}", verify=False)
 # gene = json.loads(gene_response.text)["gene"]
+
+
+class ServerCached(object):
+    _server = None
+    _ensembl = None
+
+    @property
+    def server(self):
+        if self._server is None:
+            retries = 10
+            while retries:
+                try:
+                    self._server = BiomartServer('http://useast.ensembl.org/biomart')  # http://useast.ensembl.org/biomart")
+                    logger.debug("Connection to biomart server succeeded")
+                    break
+                except Exception:
+                    ex_type, ex_value, ex_trace = sys.exc_info()
+                    retries -= 1
+                    if not retries:
+                        raise ex_type(ex_value).with_traceback(ex_trace)
+                    logger.warning(f"Connection to biomart server {retries} retries left")
+                    time.sleep(5)
+                    continue
+        return self._server
+
+    @property
+    def ensembl(self):
+        if self._ensembl is None:
+            self._ensembl = self.server.datasets['hsapiens_gene_ensembl']
+        return self._ensembl
+
+
+server_cached = ServerCached()
 
 
 def get_start_stop(gene_info):
@@ -70,30 +106,63 @@ def hpo2ensembl(
         ensembl, hgnc_symbols, hgnc_alias2s, hgnc_prev2s, hpo_name2id,
         confirm, do_not_confirm_coords):
 
-    Entrez.email = "some.email@gmail.com"
-    handle = Entrez.efetch(db="gene", id=gene_entrez_ids, rettype="gb", retmode="xml")
-    genes_entrez = Entrez.read(handle)
-
-    assert len(gene_entrez_ids) == len(genes_entrez)
-
-    gene_entrez_name_2_ensembl_id = {
-        gene["Entrezgene_gene"]["Gene-ref"]["Gene-ref_locus"]:
-        gene_ref_db["Dbtag_tag"]["Object-id"]["Object-id_str"]
-        for gene in genes_entrez
-        for gene_ref_db in gene["Entrezgene_gene"]["Gene-ref"]["Gene-ref_db"]
-        if gene_ref_db["Dbtag_db"] == "Ensembl"}
-
+    gene_entrez_id_2_ensembl_id = {}
     gene_ensembl_id_2_entrez_name = {}
 
-    # with open(output_fp, "w") as out:
+    gene_num = len(gene_entrez_ids)
+    batch_size = 32
+    batch_num = gene_num // batch_size + int(gene_num % batch_size != 0)
+    estimated_time_str = "inf"
+    times = []
+    first = True
 
-    for gene_entrez_name, gene_ensembl_id in gene_entrez_name_2_ensembl_id.items():
-        if gene_ensembl_id in gene_ensembl_id_2_entrez_name:
-            raise Exception(
-                f"gene_ensembl_id '{gene_ensembl_id}' is duplicated: "
-                f"'{gene_entrez_name}' and '{gene_ensembl_id_2_entrez_name[gene_ensembl_id]}'")
-        else:
-            gene_ensembl_id_2_entrez_name[gene_ensembl_id] = gene_entrez_name
+    for i in range(batch_num):
+        print(f'Loading batches of genes from BioMart server: {i + 1}/{batch_num}; estimated time left: {estimated_time_str}',
+              end='\r', flush=True)
+        start = time.time()
+
+        response = server_cached.ensembl.search({
+            'filters': {
+                "entrezgene_id": gene_entrez_ids[i*batch_size:(i+1)*batch_size],
+                # 'ensembl_transcript_id_version': 'ENST00000318602.12'
+            },
+            'attributes': ["entrezgene_id", "ensembl_gene_id"]
+        }, header=1)
+
+        # response format is TSV
+        header = True
+        for line in response.iter_lines():
+            line = line.decode('utf-8')
+            if header:
+                header = False
+            else:
+                ids = line.split("\t")
+                if len(ids) == 2:
+                    entrez_id = int(ids[0])
+                    ensembl_id = ids[1]
+
+                    if ensembl_id in gene_ensembl_id_2_entrez_name:
+                        gene_ensembl_id_2_entrez_name[ensembl_id].append(entrez_id)
+                        # print(f"ensembl_id '{ensembl_id}' duplicated: {gene_ensembl_id_2_entrez_name[ensembl_id]}")
+                    else:
+                        gene_ensembl_id_2_entrez_name[ensembl_id] = [entrez_id,]
+
+                    if entrez_id in gene_entrez_id_2_ensembl_id:
+                        gene_entrez_id_2_ensembl_id[entrez_id].append(ensembl_id)
+                        # print(f"entrez_id '{entrez_id}' duplicated: {gene_entrez_id_2_ensembl_id[entrez_id]}")
+                    else:
+                        gene_entrez_id_2_ensembl_id[entrez_id] = [ensembl_id, ]
+                else:
+                    print(f"not 2 ids returned: {line}")
+
+        end = time.time()
+        if not first:
+            times.append(end - start)
+            estimated_time = sum(times) * (batch_num - (i + 1)) / (len(times) * 60)
+            estimated_time_str = f"{estimated_time: .2f} min"
+        first = False
+
+    Entrez.email = "some.email@gmail.com"
 
     for gene_entrez_name, gene_entrez_id in zip(gene_entrez_names, gene_entrez_ids):
         if gene_entrez_name in hpo_name2id:
@@ -101,22 +170,26 @@ def hpo2ensembl(
             continue
         gene_handle = Entrez.esummary(db="gene", id=str(gene_entrez_id))
         gene_info = Entrez.read(gene_handle)['DocumentSummarySet']['DocumentSummary'][0]
+        genomic_info = gene_info['GenomicInfo'][0] if len(gene_info['GenomicInfo']) else ""
         print(
             f"\tgene entrez name:\t{gene_entrez_name}\n"
             f"\tgene entrez id:\t{gene_entrez_id}\n"
             f"\tgene entrez name:\t{gene_info['NomenclatureName']}\n"
             f"\tgene entrez synonyms:\t{gene_info['OtherAliases']}\n"
-            f"\tgene entrez location:\n\t{gene_info['GenomicInfo'][0]}\n"
+            f"\tgene entrez location:\n\t{genomic_info}\n"
         )
-        start, stop = get_start_stop(gene_info['GenomicInfo'][0])
+        if genomic_info:
+            start, stop = get_start_stop(gene_info['GenomicInfo'][0])
 
-        coords = {
-            "chr": gene_info['GenomicInfo'][0]['ChrLoc'],
-            "start": start,
-            "stop": stop
-        }
+            coords = {
+                "chr": gene_info['GenomicInfo'][0]['ChrLoc'],
+                "start": start,
+                "stop": stop
+            }
+        else:
+            coords = None
 
-        if gene_entrez_name not in gene_entrez_name_2_ensembl_id:
+        if gene_entrez_id not in gene_entrez_id_2_ensembl_id:
             # print additional info from entrez
             print(
                 f"ensembl id was not specified for gene '{gene_entrez_name}' '{gene_entrez_id}'")
@@ -131,7 +204,7 @@ def hpo2ensembl(
                 coords=coords,
                 do_not_confirm_coords=do_not_confirm_coords
             )
-            if gene_result:
+            if gene_result is not None:
                 gene_name_id = gene_result["gene_id"]
                 ensembl_gene_name = gene_result["gene_name"]
                 if gene_name_id in gene_ensembl_id_2_entrez_name:
@@ -144,25 +217,33 @@ def hpo2ensembl(
                 gene_name_id = None
                 ensembl_gene_name = None
         else:
-            gene_name_ensembl = ensembl.loc[
-                ensembl["gene_id"] == gene_entrez_name_2_ensembl_id[gene_entrez_name]].copy()
-            if len(gene_name_ensembl):
-                gene_name_ensembl["relationship"] = "entrez_id -> ensembl_id"
-                gene_name_ensembl["coords_coincidence"] = False
-                gene_name_ensembl.loc[
-                                (gene_name_ensembl.iloc[:, 0] == coords["chr"]) &
-                                (gene_name_ensembl.iloc[:, 3] == coords["start"]) &
-                                (gene_name_ensembl.iloc[:, 4] == coords["stop"]), "coords_coincidence"] = True
-                gene_result = get_confirmation(
-                    gene_entrez_name, gene_name_ensembl, ensembl, confirm, do_not_confirm_coords)
+            ensembl_gene = ensembl.loc[
+                ensembl["gene_id"].isin(gene_entrez_id_2_ensembl_id[gene_entrez_id]), :].copy()
+            if len(ensembl_gene):
+                ensembl_gene["relationship"] = "entrez_id -> ensembl_id"
+                ensembl_gene["coords_coincidence"] = False
+                if coords is not None:
+                    ensembl_gene.loc[
+                                    (ensembl_gene.iloc[:, 0] == coords["chr"]) &
+                                    (ensembl_gene.iloc[:, 3] == coords["start"]) &
+                                    (ensembl_gene.iloc[:, 4] == coords["stop"]), "coords_coincidence"] = True
+                if len(ensembl_gene) == 1:
+                    gene_result = get_confirmation(
+                        gene_entrez_name, ensembl_gene, ensembl, confirm, do_not_confirm_coords)
+                elif len(ensembl_gene) > 1:
+                    gene_result = choose_from_or_provide_id(
+                        gene_entrez_name, ensembl_gene, ensembl, confirm, do_not_confirm_coords)
+                else:
+                    gene_result = provide_id(gene_entrez_name, ensembl, confirm)
+
                 gene_name_id = gene_result["gene_id"]
                 ensembl_gene_name = gene_result["gene_name"]
             else:
                 raise Exception(
-                    f"Nothing was found in ensembl db by id '{gene_entrez_name_2_ensembl_id[gene_entrez_name]}'")
+                    f"Nothing was found in ensembl db by id '{gene_entrez_id_2_ensembl_id[gene_entrez_id]}'")
 
         if gene_name_id is not None:
-            gene_entrez_name_2_ensembl_id[gene_entrez_name] = gene_name_id
+            gene_entrez_id_2_ensembl_id[gene_entrez_id] = gene_name_id
             gene_ensembl_id_2_entrez_name[gene_name_id] = gene_entrez_name
 
             hpo_name2id[gene_entrez_name] = {
@@ -257,8 +338,6 @@ if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         handlers=[handler])
-
-    logger = logging.getLogger()
 
     # ontologyId = "HP:0003198"
     # gtf_fp = r"C:\Users\kseniya.petrova\projs\Anfisa\Homo_sapiens.GRCh38.105.chr.gtf"

@@ -279,7 +279,7 @@ def search_and_negotiate(
         coords_result = ensembl.loc[
                         (ensembl.iloc[:, 0] == coords["chr"]) &
                         (ensembl.iloc[:, 3] == coords["start"]) &
-                        (ensembl.iloc[:, 4] == coords["stop"]), :]
+                        (ensembl.iloc[:, 4] == coords["stop"]), :].copy()
         coords_result["coords_coincidence"] = True
         if len(gene_result):
             gene_result.loc[:, "coords_coincidence"] = False
