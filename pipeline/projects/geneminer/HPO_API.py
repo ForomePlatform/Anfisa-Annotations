@@ -24,24 +24,27 @@ logger = logging.getLogger()
 class ServerCached(object):
     _server = None
     _ensembl = None
+    urls = ['http://uswest.ensembl.org/biomart', 'http://useast.ensembl.org/biomart']
 
     @property
     def server(self):
         if self._server is None:
-            retries = 10
-            while retries:
-                try:
-                    self._server = BiomartServer('http://useast.ensembl.org/biomart')  # http://useast.ensembl.org/biomart")
-                    logger.debug("Connection to biomart server succeeded")
-                    break
-                except Exception:
-                    ex_type, ex_value, ex_trace = sys.exc_info()
-                    retries -= 1
-                    if not retries:
-                        raise ex_type(ex_value).with_traceback(ex_trace)
-                    logger.warning(f"Connection to biomart server {retries} retries left")
-                    time.sleep(5)
-                    continue
+            for url in self.urls:
+                retries = 5
+                while retries:
+                    try:
+                        self._server = BiomartServer(url)
+                        logger.debug("Connection to biomart server succeeded")
+                        return self._server
+                    except Exception:
+                        ex_type, ex_value, ex_trace = sys.exc_info()
+                        retries -= 1
+                        if not retries:
+                            raise ex_type(ex_value).with_traceback(ex_trace)
+                        logger.debug(f"Connection to biomart server {retries} retries left")
+                        time.sleep(5)
+                        continue
+            raise Exception(f"Couldn't connect to BioMart server by any of urls from list: {self.urls}")
         return self._server
 
     @property
