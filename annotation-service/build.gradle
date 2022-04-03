@@ -1,17 +1,30 @@
 plugins {
     id 'java'
+    id 'maven-publish'
+    id 'application'
 }
 
 group 'org.forome'
 version '0.6.1.144'
-compileJava.options.encoding = 'UTF-8'
-compileTestJava.options.encoding = 'UTF-8'
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 sourceCompatibility = 1.8
 
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = "${this.group}"
+            artifactId = 'annotations'
+            version = version
+
+            from components.java
+        }
+    }
+}
+
 repositories {
+    mavenLocal()
     mavenCentral()
-    maven { url "https://maven.corp.mobin.me/repository/maven-releases/" }
 }
 
 sourceSets {
@@ -57,6 +70,8 @@ sourceSets {
     }
 }
 
+mainClassName = "org.forome.annotation.annotator.main.AnnotatorMainFork"
+
 configurations {
     make_databaseCompile.extendsFrom compile
     make_databaseRuntime.extendsFrom runtime
@@ -72,6 +87,7 @@ configurations {
 }
 
 jar {
+    baseName = "annotations"
     if (project.hasProperty('make_database')) {
         archiveName = project.hasProperty('filename') ? filename : (rootProject.name + '_v.' + project.version + '-full.jar')
 
