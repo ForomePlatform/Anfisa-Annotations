@@ -1,0 +1,6 @@
+2022-03-30 18:53:01.049 [00000001] ERROR org.forome.annotation.Main:58 - Application crashing 
+java.lang.RuntimeException: File: C:\Users\kirill.goreliy\IdeaProjects\Anfisa-Annotations\config.json not found
+	at org.forome.annotation.config.ServiceConfig.<init>(ServiceConfig.java:63)
+	at org.forome.annotation.config.ServiceConfig.<init>(ServiceConfig.java:58)
+	at org.forome.annotation.Service.<init>(Service.java:129)
+	at org.forome.annotation.Main.main(Main.java:42)
