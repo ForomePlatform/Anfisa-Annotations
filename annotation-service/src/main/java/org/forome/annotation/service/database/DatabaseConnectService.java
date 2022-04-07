@@ -118,7 +118,7 @@ public class DatabaseConnectService implements AutoCloseable {
 			pooledDataSource.setTestConnectionOnCheckin(false);
 			pooledDataSource.setTestConnectionOnCheckout(false);
 
-			log.debug("Database connected by: {}", databaseConfigConnector.mysqlHost);
+			log.debug("Database connected to: {}", jdbcUrl);
 
 			return pooledDataSource;
 		} catch (Throwable ex) {

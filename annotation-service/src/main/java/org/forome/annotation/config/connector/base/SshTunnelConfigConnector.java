@@ -32,4 +32,12 @@ public abstract class SshTunnelConfigConnector {
 			sshTunnelConfig = null;
 		}
 	}
+
+	@Override
+	public String toString ()
+	{
+		if (sshTunnelConfig == null)
+			return "no ssh tunnel";
+		return sshTunnelConfig.toString ();
+	}
 }

@@ -33,4 +33,10 @@ public class SshTunnelConfig {
 		user = parse.getAsString("user");
 		key = parse.getAsString("key");
 	}
+
+	@Override
+	public String toString ()
+	{
+		return String.format ("%s@%s:%d", user, host, port);
+	}
 }

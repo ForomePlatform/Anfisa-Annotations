@@ -25,6 +25,9 @@ public class FrontendConfig {
 	public final String apikey;
 
 	public FrontendConfig(JSONObject parse) {
+		if (parse == null) {
+			throw new IllegalArgumentException ("FrontEnd API Key is null in config file");
+		}
 		this.apikey = parse.getAsString("apikey");
 	}
 }

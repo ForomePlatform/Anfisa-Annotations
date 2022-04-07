@@ -58,7 +58,8 @@ public class DatabaseConnector implements Closeable {
 						log.debug("Exception", e);
 						throw ExceptionBuilder.buildExternalDatabaseException(e);
 					} else {
-						log.debug("Failed create connect... pause, attempt: {}", attempt);
+						log.debug("Failed to connect to {} pause, attempt: {}",
+							databaseConfigConnector.toString (), attempt);
 						try {
 							Thread.sleep(10000);
 						} catch (InterruptedException ignore) {
