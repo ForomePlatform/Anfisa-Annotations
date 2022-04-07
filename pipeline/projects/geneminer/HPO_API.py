@@ -115,7 +115,7 @@ def hpo2ensembl(
     gene_num = len(gene_entrez_ids)
     batch_size = 32
     batch_num = gene_num // batch_size + int(gene_num % batch_size != 0)
-    estimated_time_str = "inf"
+    estimated_time_str = "unknown"
     times = []
     first = True
 
