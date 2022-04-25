@@ -64,7 +64,7 @@ public class AnnotatorMainFork {
 				ex.printStackTrace();
 			}
 		});
-		threadStdOut.setDaemon(true);
+//		threadStdOut.setDaemon(true);
 		threadStdOut.start();
 
 		//Читаем stderr
@@ -81,7 +81,7 @@ public class AnnotatorMainFork {
 				ex.printStackTrace();
 			}
 		});
-		threadStdErr.setDaemon(true);
+//		threadStdErr.setDaemon(true);
 		threadStdErr.start();
 
 
