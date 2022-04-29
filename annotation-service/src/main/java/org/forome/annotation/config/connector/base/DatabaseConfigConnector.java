@@ -38,4 +38,20 @@ public abstract class DatabaseConfigConnector extends SshTunnelConfigConnector {
 		mysqlUser = parseMysql.getAsString("user");
 		mysqlPassword = parseMysql.getAsString("password");
 	}
+
+	@Override
+	public String toString ()
+	{
+		String host;
+		if (sshTunnelConfig == null)
+			host = mysqlHost;
+		else
+			host = super.toString () + "[" + mysqlHost + "]";
+		String jdbcUrl = "jdbc:mysql://" +
+						 host + ':' +
+						 mysqlPort + '/' + mysqlDatabase +
+						 "?user=" + mysqlUser +
+						 "&password=" + mysqlPassword;
+		return jdbcUrl;
+	}
 }
