@@ -1,6 +1,39 @@
 # Annotation Database Service
 
-## Overview
+<!-- toc -->
+
+- [Overview](#overview)
+- [AStorage: technical description](#astorage-technical-description)
+  * [Terminology notes: array -> section -> schema](#terminology-notes-array---section---schema)
+  * [Service requests](#service-requests)
+  * [Bulk requests](#bulk-requests)
+  * [Service structure](#service-structure)
+    - [Directories and files](#directories-and-files)
+    - [Programs](#programs)
+        * [Launches](#launches)
+  * [Service setup](#service-setup)
+    - [Administrative aspects: number of open files](#administrative-aspects-number-of-open-files)
+    - [General setup astorage.cfg](#general-setup-astoragecfg)
+    - [Schema setup](#schema-setup)
+    - [Principles of stacking JSON structures](#principles-of-stacking-json-structures)
+    - [Keys and record locking inside RocksDB](#keys-and-record-locking-inside-rocksdb)
+  * [Supplements](#supplements)
+    - [A1. Virtual environment settings](#a1-virtual-environment-settings)
+    - [A2. Project structure, brief description for porting to Java](#a2-project-structure-brief-description-for-porting-to-java)
+        * [System kernel: /a_rocksdb](#system-kernel-a_rocksdb)
+          - [Auxiliary modules for organizing requests](#auxiliary-modules-for-organizing-requests)
+          - [Main modules](#main-modules)
+          - [Classes that replace ASchema in specific cases](#classes-that-replace-aschema-in-specific-cases)
+          - [Implementation of different logics for grouping records](#implementation-of-different-logics-for-grouping-records)
+          - [“Deep data compilation” mode](#deep-data-compilation-mode)
+          - [Implementation of different logics for grouping records](#implementation-of-different-logics-for-grouping-records)
+        * [Encoding/packing algorithms: /codec](#encodingpacking-algorithms-codec)
+        * [The logic for generating a “simplified JSON representation”](#the-logic-for-generating-a-simplified-json-representation)
+        * [Other directories and files](#other-directories-and-files)
+
+<!-- tocstop -->
+
+##Overview
 
 For an efficient annotation process we need to store annotation sources locally
 for the actual process. To annotate a single genetic variant, in most cases, we
@@ -9,7 +42,7 @@ coordinates of the variant and the DNA change. Hence, a key-value store seems to
 be a perfect place to store the majority of the information. We use RocksDB as
 the key-value store for annotations.
 
-## AStorage: technical description
+##AStorage: technical description
 
 AStorage is a RocksDB support module designed for the Anfisa-Annotations project.
 
@@ -315,7 +348,7 @@ Below **(\*)** denotes the main files that need a port to Java in the first plac
 
 - **block_support.py(\*)** - packing/formatting algorithms used when blocking records
 
-  ###### The logic for generating a “simplified JSON representation”:
+###### The logic for generating a “simplified JSON representation”:
 - **_codec_data.py**
 - **codec_num.py**
 - **codec_str.py**
