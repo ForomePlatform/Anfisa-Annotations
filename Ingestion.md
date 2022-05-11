@@ -96,9 +96,9 @@ Configuration in `astorage.cfg`:
 * Last tested version: patch 13
 * [Project URL](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.39)
 
-| Source (downloaded) size | Database size | Time to ingest  | Source file URL                                                                                                                                                                    |
-|--------------------------|---------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|1.6 GB | 1.6 GB | 7 minutes | [p13](ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.39_GRCh38.p13) | 
+| Source (downloaded) size | Database size | Time to ingest  | Source file URL                                                                                                                     |
+|--------------------------|---------------|-----------------|-------------------------------------------------------------------------------------------------------------------------------------|
+|1.6 GB | 1.6 GB | 7 minutes | FTP: `ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.39_GRCh38.p13` | 
 
 Configuration in `astorage.cfg`:
 
@@ -214,9 +214,9 @@ Configuration in `astorage.cfg`:
 * This data is loaded to both AStorage and MySQL (for legacy reasons)
 
 
-| Source (downloaded) size | Database size | Time to ingest | Source file URL                                                                                   |
-|--------------------------|---------------|----------------|---------------------------------------------------------------------------------------------------|
-| 45 MB                    | 30 MB         | 7 minutes      | [General downloads](http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/); [Direct Download](ftp://ftp.ensembl.org/pub/release-105/gtf/homo_sapiens/Homo_sapiens.GRCh38.105.chr.gtf.gz) | 
+| Source (downloaded) size | Database size | Time to ingest | Source file URL                                                                                                                                                                             |
+|--------------------------|---------------|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 45 MB                    | 30 MB         | 7 minutes      | [General downloads](http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/); Direct Download: `ftp://ftp.ensembl.org/pub/release-105/gtf/homo_sapiens/Homo_sapiens.GRCh38.105.chr.gtf.gz` | 
 
 
 ### GTF in MySQL
