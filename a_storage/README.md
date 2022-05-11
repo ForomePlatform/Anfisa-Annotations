@@ -1,48 +1,4 @@
-# Annotation Database Service
-
-<!-- toc -->
-
-- [Overview](#overview)
-- [AStorage: technical description](#astorage-technical-description)
-  * [Terminology notes: array -> section -> schema](#terminology-notes-array---section---schema)
-  * [Service requests](#service-requests)
-  * [Bulk requests](#bulk-requests)
-  * [Service structure](#service-structure)
-    - [Directories and files](#directories-and-files)
-    - [Programs](#programs)
-        * [Launches](#launches)
-  * [Service setup](#service-setup)
-    - [Administrative aspects: number of open files](#administrative-aspects-number-of-open-files)
-    - [General setup astorage.cfg](#general-setup-astoragecfg)
-    - [Schema setup](#schema-setup)
-    - [Principles of stacking JSON structures](#principles-of-stacking-json-structures)
-    - [Keys and record locking inside RocksDB](#keys-and-record-locking-inside-rocksdb)
-  * [Supplements](#supplements)
-    - [A1. Virtual environment settings](#a1-virtual-environment-settings)
-    - [A2. Project structure, brief description for porting to Java](#a2-project-structure-brief-description-for-porting-to-java)
-        * [System kernel: /a_rocksdb](#system-kernel-a_rocksdb)
-          - [Auxiliary modules for organizing requests](#auxiliary-modules-for-organizing-requests)
-          - [Main modules](#main-modules)
-          - [Classes that replace ASchema in specific cases](#classes-that-replace-aschema-in-specific-cases)
-          - [Implementation of different logics for grouping records](#implementation-of-different-logics-for-grouping-records)
-          - [“Deep data compilation” mode](#deep-data-compilation-mode)
-          - [Implementation of different logics for grouping records](#implementation-of-different-logics-for-grouping-records)
-        * [Encoding/packing algorithms: /codec](#encodingpacking-algorithms-codec)
-        * [The logic for generating a “simplified JSON representation”](#the-logic-for-generating-a-simplified-json-representation)
-        * [Other directories and files](#other-directories-and-files)
-
-<!-- tocstop -->
-
-##Overview
-
-For an efficient annotation process we need to store annotation sources locally
-for the actual process. To annotate a single genetic variant, in most cases, we
-can access all the information using a well-defined key, based on the genetic
-coordinates of the variant and the DNA change. Hence, a key-value store seems to
-be a perfect place to store the majority of the information. We use RocksDB as
-the key-value store for annotations.
-
-##AStorage: technical description
+# AStorage: technical description
 
 AStorage is a RocksDB support module designed for the Anfisa-Annotations project.
 
@@ -53,7 +9,36 @@ The basic principle of use: we use AStorage / RocksDB when we don't want to acce
 - to support specific search features, when we don't want to use MySQL (GTF, where you need to search for “windows of positions”, and not the positions themselves)
 - (in the future): we can switch to the same interface the rest of the arrays required for the annotation, but it's not very clear why we should do this: support via RocksDB is relatively expensive.
 
-> ### Terminology notes: array -> section -> schema
+
+## Table of contents
+* [Service requests](#service-requests)
+* [Bulk requests](#bulk-requests)
+* [Service structure](#service-structure)
+  - [Directories and files](#directories-and-files)
+  - [Programs](#programs)
+      * [Launches](#launches)
+* [Service setup](#service-setup)
+  - [Administrative aspects: number of open files](#administrative-aspects-number-of-open-files)
+  - [General setup astorage.cfg](#general-setup-astoragecfg)
+  - [Schema setup](#schema-setup)
+  - [Principles of stacking JSON structures](#principles-of-stacking-json-structures)
+  - [Keys and record locking inside RocksDB](#keys-and-record-locking-inside-rocksdb)
+* [Supplements](#supplements)
+  - [A1. Virtual environment settings](#a1-virtual-environment-settings)
+  - [A2. Project structure, brief description for porting to Java](#a2-project-structure-brief-description-for-porting-to-java)
+      * [System kernel: /a_rocksdb](#system-kernel-a_rocksdb)
+        - [Auxiliary modules for organizing requests](#auxiliary-modules-for-organizing-requests)
+        - [Main modules](#main-modules)
+        - [Classes that replace ASchema in specific cases](#classes-that-replace-aschema-in-specific-cases)
+        - [Implementation of different logics for grouping records](#implementation-of-different-logics-for-grouping-records)
+        - [“Deep data compilation” mode](#deep-data-compilation-mode)
+        - [Implementation of different logics for grouping records](#implementation-of-different-logics-for-grouping-records)
+      * [Encoding/packing algorithms: /codec](#encodingpacking-algorithms-codec)
+      * [The logic for generating a “simplified JSON representation”](#the-logic-for-generating-a-simplified-json-representation)
+      * [Other directories and files](#other-directories-and-files)
+
+  
+> ## Terminology notes: array -> section -> schema
 >
 >- below **a section** refers to a data component located in its own RocksDB instance
 >- **an array** is a group of **sections** that are processed through 
@@ -66,7 +51,7 @@ one schema, and *the names of the section and its schema
 usually coincide*, but generally, this is not necessary.
 
 
-### Service requests
+## Service requests
 Currently, the REST service is running on the underlying server on port 8290. It returns data on two requests:
 
 - **get** - getting data from storage, arguments:
@@ -112,7 +97,7 @@ Service **meta-information** is defined manually in the service configuration.
 
 The `indent=1` argument works for all the listed requests; when this argument is activated, the JSON output is formatted in a readable form, with indents.
 
-### Bulk requests
+## Bulk requests
 To speed up the work, a method of downloading from the service at once a lot of information has been implemented. The request has the address “/collect”, and is supposedly called according to the POST scheme. The request supports arguments whose values are in JSON format and are contained in a dictionary:
 - **variants**: [array of dictionaries with required fields "chrom", "pos", and optional "ref", "alt"]
 - **fasta**: “hg19”/”hg38”; may be omitted, default is “hg38”)
@@ -134,8 +119,8 @@ Thus, the request “/collect”
 > - Add to the dictionaries located in **variants** the field “last” - the last position of the selection of the range for fasta (this parameter works only according to the information on fasta)
 > - When explicitly enumerating arrays in **arrays**, use the "fasta/hg19" and "fasta/hg38" pseudo-arrays.
 
-### Service structure
-#### Directories and files
+## Service structure
+### Directories and files
 ```
 ${WORK} — Project root directory (/projects/AStorage)   
 |    ${WORK}/astorage.json — Service setup      
@@ -152,12 +137,12 @@ ${WORK} — Project root directory (/projects/AStorage)
 ```
 > As noted above, the title of section and schema are usually the same. However, it is not always. In particular, when/if you want to re-create the section, without disturbing the current working copy, you can create a section with a new name with an existing schema name in it.
 
-#### Programs
+### Programs
 Module code is placed in Anfisa-Annotations repository in `a_storage` top directory. At the moment all this is only available at the brunch `origin/dev-ingestion`. Currently, to run utilities and services you need to specify in PYTHONPATH the path to deployed anfisa project - it uses utils directory. In the short term, this dependence should be transformed into a ‘wheel’, deployed in a virtual environment.
 
 The launch must be carried out in a specially designed virtual environment; a correctly designed and seemingly accessible environment is located on the server in the `/home/trifon/.forome-venv` directory.
 
-##### Launches:
+#### Launches:
 - **create_db.py** - create/recreate a section:
 
   ```shell
@@ -178,8 +163,8 @@ The launch must be carried out in a specially designed virtual environment; a co
   python -u -m ingest.a_spliceai DIR “<base pattern>” <output directory>
   ```
 
-### Service setup
-#### Administrative aspects: number of open files
+## Service setup
+### Administrative aspects: number of open files
 It is critically important that the logged user who launches the database service and utilities, has the ability to keep open a lot of files, much more than ordinary user.
 You can find out the user's limit:
 ```
@@ -207,7 +192,7 @@ And also in `/etc/ssh/sshd_config` change the value to yes:
 ```
 UsePAM yes
 ```
-#### General setup astorage.cfg                            
+### General setup astorage.cfg                            
 > The astorage.cfg file is organized as a JSON file where the same features as in the anfisa/anfisa.json project are "working":
 > - ‘comments’ - // at the beginning of the line
 > - ‘macros’ - defined inside the "file-path-def" field.
@@ -233,7 +218,7 @@ The general principle of the file: configuring all aspects at once in all progra
   * **dir-files** an empty list of directories the service could travers 
   * **logging** setup logging (note: inside the path to log service!)
 
-#### Schema setup
+### Schema setup
 > The general principle: settings are given in JSON format, and  initially, 
 > for any scheme they are defined in code in files like `ingest/s_<schema>.py`
 No additional software solutions are needed, but nesting is desirable.
@@ -246,7 +231,7 @@ And this unmodifiable file is already used when the service is running, along wi
 
 Over time, a full description of these settings should appear. Now, see examples of configurations in both the specified files and code and the following explanations:
 
-##### Principles of stacking JSON structures
+#### Principles of stacking JSON structures
 The general considerations on how data is transformed from JSON column format to RocksDB and back:
 - The input JSON-structure is converted into a pair of lines. The second line is required only in the structure has/defined (not a dictionary, see below) string fields:
    - the first line is “primitive JSON”, which contains only arrays, numbers, and the null constant; the effect of compression is expected to be the low variety of characters (like 16 or so...) that can be found in such a file.
@@ -265,7 +250,7 @@ The general considerations on how data is transformed from JSON column format to
 
 > All this above is implemented in the code in the a_storage/codec directory.
 
-##### Keys and record locking inside RocksDB
+#### Keys and record locking inside RocksDB
 In the same directory `a_storage/codec` the logic of working with keys and with block packs is collected.
 
 ***Keys***: When using arrays, the key role (literally) plays a couple of parameters: chromosome/position. As part of AStorage for the two assemblies - hg19 and hg38, we implement an internal representation of this pair as a 4-byte number. The chromosome ranges are extended and do not fit together. These internal representations are used as keys in RocksDB.
@@ -276,8 +261,8 @@ In the same directory `a_storage/codec` the logic of working with keys and with 
 - **Cluster Block Packing**: Entries are grouped into blocks of relatively equal size, grouping creates an additional data object with a table of entries in the block. Additional column is also created with a page-by-page table of all clusters ( to circumvent the seek() call from RocksDB functionality, which has shown itself to be unstable on large volumes)
 - **Packaging frames**: this is a pseudo packaging, it is a way to use the RocksDB seek() call to find from the position a block of records related to the "window" positions, which includes the specified item. It is used with the "gtf" scheme (here we use seek() call, but on relatively small volumes, where behavior is fairly stable)
 
-### Supplements
-#### A1. Virtual environment settings
+## Supplements
+### A1. Virtual environment settings
 In the virtual environment, we need to install our “general” 
 forome_utils package, as well as the packages specified 
 in `requirements.txt` from the Anfisa-Annotations project
@@ -297,21 +282,21 @@ To install it in the project environment, you need:
   ```
 As a result, the plainrocks package will be installed in the virtual environment.It’s all you need to make AStorage work.
 
-#### A2. Project structure, brief description for porting to Java 
+### A2. Project structure, brief description for porting to Java 
 > Attention! Actual branch is **dev-ingestion.1**
 
 Below **(\*)** denotes the main files that need a port to Java in the first place.
 
-##### System kernel: /a_rocksdb
+#### System kernel: /a_rocksdb
 - **app.py** - organizing the application as an HTTP server, you don't need to rewrite it directly in Java, you need to do your own tweaking
 
-  ###### Auxiliary modules for organizing requests:
+  ##### Auxiliary modules for organizing requests:
 
 - **a_array.py(\*)** - representation of an array, as a collection of sections of AArray
 
 - **a_collect.py(\*)** - implementation of bulk requests
 
-  ###### Main modules:
+  ##### Main modules:
 
 - **a_storage.py(\*)** - AStorage head logic module
 
@@ -323,23 +308,23 @@ Below **(\*)** denotes the main files that need a port to Java in the first plac
 
 - **a_blocker.py(\*)** - general logic for blocking records within a section
 
-  ###### Classes that replace ASchema in specific cases:
+  ##### Classes that replace ASchema in specific cases:
 
 - **a_fasta_schema.py** - Schema implementation for the Fasta section
 
 - **a_seg_schema.py** - composite section glued together from several sections, not used
 
-  ###### Implementation of different logics for grouping records:
+  ##### Implementation of different logics for grouping records:
 - **a_blk_segment.py(\*)** - logic for blocking records at intervals of positions of a fixed size (used for “solid” sections)
 - **a_blk_cluster.py** - logic for blocking records in batches of more or less the same size (used for "leaky" partitions)
 - **a_blk_pager.py** - internal blocking of the table of contents of "cluster" logic in pages, used to organize access to clusters bypassing the seek () method in RocksDB
 - **a_blk_frames.py** - special logic for blocking records for gtf
-  ###### “Deep data compilation” mode:
+  ##### “Deep data compilation” mode:
 - **deep_comp.py** - write/read archives in deep compilation format
 - **deep_load.py** - logic for loading deep compilation archives
 
 
-##### Encoding/packing algorithms: /codec
+#### Encoding/packing algorithms: /codec
 > The logic of this directory does not need to be copied in Java one to one. You can use some other solutions instead.
 
 - **\_\_init\_\_.py(\*)** - an essential file through which classes from the directory are obtained for use
@@ -348,7 +333,7 @@ Below **(\*)** denotes the main files that need a port to Java in the first plac
 
 - **block_support.py(\*)** - packing/formatting algorithms used when blocking records
 
-###### The logic for generating a “simplified JSON representation”:
+##### The logic for generating a “simplified JSON representation”:
 - **_codec_data.py**
 - **codec_num.py**
 - **codec_str.py**
@@ -356,7 +341,7 @@ Below **(\*)** denotes the main files that need a port to Java in the first plac
 - **codec_list.py**
 - **codec_agroup.py**
 
-##### Other directories and files
+#### Other directories and files
 - **/ingest** - logic for loading various data sections, a porting to Java is probably not needed at all
 - **/plainrocks** - builds a python package for RocksDB, doesn't make sense at all for a Java porting
 - **create_db.py(\*)** - general partition creation script
