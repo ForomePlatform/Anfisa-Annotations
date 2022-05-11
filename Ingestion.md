@@ -147,7 +147,7 @@ Configuration in `astorage.cfg`:
 
 | Source (downloaded) size | Database size | Time to ingest | Source file URL                                                                                                                                                       |
 |--------------------------|---------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 25 GB                    | 13 GB         | 12 hours       | [FTP][ftp://dbnsfp:dbnsfp@dbnsfp.softgenetics.com/dbNSFP4.0a.zip], [Google Drive](https://drive.google.com/file/d/1BNLEdIc4CjCeOa7V7Z8n8P8RHqUaF5GZ/view?usp=sharing) | 
+| 25 GB                    | 13 GB         | 12 hours       | FTP: `ftp://dbnsfp:dbnsfp@dbnsfp.softgenetics.com/dbNSFP4.0a.zip`, [Google Drive](https://drive.google.com/file/d/1BNLEdIc4CjCeOa7V7Z8n8P8RHqUaF5GZ/view?usp=sharing) | 
 
 Command:
 
