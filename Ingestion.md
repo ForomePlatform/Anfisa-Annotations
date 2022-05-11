@@ -77,9 +77,9 @@ format and can be downloaded from US National Library of Medicine
 * [Project URL](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.13/)
 * Last tested version: patch 13
 
-| Source (downloaded) size | Database size | Time to ingest  | Source file URL                                                                                                                                                                    |
-|--------------------------|---------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|1.6 GB | 1.6 GB | 7 minutes | [p13]((http://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.fna.gz)) | 
+| Source (downloaded) size | Database size | Time to ingest  | Source file URL                                                                                                                                                                  |
+|--------------------------|---------------|-----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|1.6 GB | 1.6 GB | 7 minutes | [p13](http://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.fna.gz) | 
 
 Command:
 
@@ -145,9 +145,9 @@ Configuration in `astorage.cfg`:
 * [Additional Project URL](http://database.liulab.science/dbNSFP)
 * Last tested version: 4.0.a
 
-| Source (downloaded) size | Database size | Time to ingest | Source file URL                                                                     |
-|--------------------------|---------------|----------------|-------------------------------------------------------------------------------------|
-| 25 GB                    | 13 GB         | 12 hours       | [FTP](ftp://dbnsfp:dbnsfp@dbnsfp.softgenetics.com/dbNSFP4.0a.zip), [Google Drive](https://drive.google.com/file/d/1BNLEdIc4CjCeOa7V7Z8n8P8RHqUaF5GZ/view?usp=sharing) | 
+| Source (downloaded) size | Database size | Time to ingest | Source file URL                                                                                                                                                       |
+|--------------------------|---------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 25 GB                    | 13 GB         | 12 hours       | [FTP][ftp://dbnsfp:dbnsfp@dbnsfp.softgenetics.com/dbNSFP4.0a.zip], [Google Drive](https://drive.google.com/file/d/1BNLEdIc4CjCeOa7V7Z8n8P8RHqUaF5GZ/view?usp=sharing) | 
 
 Command:
 
