@@ -20,8 +20,9 @@ We use two sources for work with gene nomenclature:
 
 * Download [https://www.genenames.org/download/archive/](https://www.genenames.org/download/archive/)
 
-We use the full data downloaded from this site in JSON-form: hgnc_complete_set.json
+* We use the full data downloaded from this site in JSON-form: hgnc_complete_set.json
 
+*Note*. For both sources we collect only proteing-coding symbols 
 
 # Mining procedure: determination of "real" symbols
 
@@ -29,13 +30,13 @@ Gene panel definitions are being preparing by specialists for a long time, and g
 
 To solve this problem, we do the following:
 
-* For each symbol from GTF/Ensembl nomenclature we evaluate list of relevant symbols: current or previous names of the symbol, joined with alias names
+* For each symbol from GTF/Ensembl nomenclature we evaluate list of **relevant symbols**: current or previous names of the symbol, joined with alias names
 
 * For each known symbols from HGNC we collect **recommended list**: symbols from GTF/Ensembl nomenclature that are relevant to this symbol
 
 # Prerequirements
 
-Setup python virtual environment for the project Anfisa. Activate it.
+Setup python virtual environment for the project Anfisa, activate it.
 
 # Task 1: prepare gene database
 
@@ -45,11 +46,11 @@ By default, the utility tries to find two preloaded files in the current directo
     
  * -g HGNC, --hgnc HGNC  *Path to hgnc_complete set*
 
-     ``hgnc_complete_set_2022-04-01.json:``
+     Default: ``hgnc_complete_set_2022-04-01.json:``
  
  * -e ENSEMBL, --ensembl ENSEMBL *Path to ensembl archive*
 
-    ``Homo_sapiens.GRCh38.105.chr.gtf``
+    Default: ``Homo_sapiens.GRCh38.105.chr.gtf``
 
 The resulting file (``gene_db.js``) is the file in JSON format. The first line of it contains descriptor with versions of the source files. Next lines correspond descriptors of symbols, one symbol per line. 
     
@@ -64,38 +65,20 @@ Information on gene symbol currently contains the following blocks (if present):
 
 # Task 2: 
     
+On start we have panel (list of symbols). This list can be in CSV format (only ``ensembl_gene_name`` field is used currently). On finish we have panel that consists only from symbols of Ensembl/GTF nomenclature, this list may be more wide than "perfect", however there is "some" guarantee that no symbols form Ensembl/GTF nomenclature is lost in it.
+    
+    > python up_pannel.py -d gene_db.js {pannel_input_name} > {panel_output_name}
+    > python up_pannel.py {pannel_input_name} > {panel_output_name}
 
+Run the first variant only once, with ``gene_db.js`` file that is result of Task 1 procedure: the file ``gene_db.rev`` will be created in the directory and there is no need to use full database file in next runs.
+
+The script uses option:
+
+ * -r REV, --rev REV
+ 
+    Default: ``gene_db.rev``
+    
+The script stores resulting symbols list in ``stdout`` and reports problems in ``stderr``
+    
 The project logic assumes that GTF information is ingested to MySQL, so the required data is prepared for geneminer purposes as result of such a call:
 
-> mysql -u<?> -p<?> -e 'SELECT distinct chromosome, gene from ensembl_hg38.GTF_gene' > gtf_genes.txt
-
-HGNC
-----
-* Download [https://www.genenames.org/download/archive/](https://www.genenames.org/download/archive/)
-
-We use the full data downloaded from this site in JSON-form: hgnc_complete_set.json
-
-# Build index
-
-    > python3 make_index.py > gtf_rev.txt
-
-Default options for this utility assume that the files **gtf_genes.txt** and **hghgnc_complete_set.json** (see above) are prepared and llocated in the current directory. The result file gtf_ref.txt is index.
-
-# Gene panel format
-
-We use simple text format for gene panels: each symbol should be located in separated line.
-There could be comments in the text file, with leading '#' symbol. There can be inline comments or full line comments. Inline comments are ignored in parsing, full line comments are kept in processing.
-
-There are two special form for coment line, with leading two symbols '##', used for mark ID of pannel and references
-
-    ## ID: ...
-    
-    ## http...
-
-# Processing panel file
-
-    > python3 up_pannel.py {pannel_input_name} > {panel_output_name}
-
-The script can be run from any directory, the index by default is the file **gtf_rev.txt** that should be located in the same directory as up_pannel.py. 
-
-By default the output of the process is the fixed pannel text format. All errors and remarks are printed to <stderr> channel. With option -C (--calm) the output is empty, only log information is printed. 
