@@ -20,24 +20,15 @@
 
 import sys, json, os
 from argparse import ArgumentParser
-from forome_tools.vcf import VCF_Support
 from collections import defaultdict
+from forome_tools.vcf import VCF_Support
 #=====================================
 parser = ArgumentParser()
-parser.add_argument("-c", "--config", default = "./anfisa.json",
-    help = "Anfisa config file")
 parser.add_argument("-g", "--hgnc",
     help = "Path to hgnc_complete set (hgnc_complete_set_2022-04-01.json)")
 parser.add_argument("-e", "--ensembl",
     help = "Path to ensembl archive (Homo_sapiens.GRCh38.105.chr.gtf)")
-parser.add_argument("-p", "--pregtf", default = "gtf_pre.js",
-    help = "Path to preprocessed ensembl")
-parser.add_argument("-m", "--mode", default = "full",
-    help="Command mode: full|quick")
 run_args = parser.parse_args()
-
-assert run_args.mode in ("full", "quick"), (
-    f"Invalid run mode: {run_args.mode} (available: full|quick)")
 
 #===============================================
 def properGTFrecord(gene_name, rec_list):
@@ -64,7 +55,7 @@ sOrdGeneFields = sUniqueGeneFields + [
     "gene_version", "gene_source", "gene_biotype"]
 sAllGeneFields = sOrdGeneFields + ["gene_id", "gene_name"]
 
-def prepareEnsembl(ensembl_file, proc_ensembl_file):
+def prepareEnsembl(ensembl_file):
     symbols = defaultdict(list)
     gtf_records = dict()
     vcf_supp = VCF_Support(multi_fields = {"tag"})
@@ -94,46 +85,18 @@ def prepareEnsembl(ensembl_file, proc_ensembl_file):
         + f"/ {len(symbols)} symbols", file = sys.stderr)
 
     meta_info = {"meta": [versionOfFile(ensembl_file)]}
-    with open(proc_ensembl_file, "w", encoding = "utf-8") as outp:
-        print(json.dumps(meta_info,
-            sort_keys = True, ensure_ascii = False), file = outp)
-        for gene_name in sorted(symbols.keys()):
-            rec_list = symbols[gene_name]
-            rec_list.sort(key = lambda rec: rec["gene_id"])
-            if properGTFrecord(gene_name, rec_list):
-                for rec in rec_list[1:]:
-                    for fld in sUniqueGeneFields:
-                        assert rec[fld] == rec_list[0][fld], (
-                            f"GTF: at line {cnt} "
-                            + f"gene_name={rec['gene_name']}: "
-                            + f"unique conflict in {fld}: "
-                            + f"{rec.get(fld)}|{rec_list[0][fld]}")
-            print(json.dumps({"symbol": gene_name, "gtf": rec_list},
-                sort_keys = True, ensure_ascii = False), file = outp)
+    for gene_name in sorted(symbols.keys()):
+        rec_list = symbols[gene_name]
+        rec_list.sort(key = lambda rec: rec["gene_id"])
+        if properGTFrecord(gene_name, rec_list):
+            for rec in rec_list[1:]:
+                for fld in sUniqueGeneFields:
+                    assert rec[fld] == rec_list[0][fld], (
+                        f"GTF: at line {cnt} "
+                        + f"gene_name={rec['gene_name']}: "
+                        + f"unique conflict in {fld}: "
+                        + f"{rec.get(fld)}|{rec_list[0][fld]}")
 
-    print(f"GTF result stored in {proc_ensembl_file}", file = sys.stderr)
-    return meta_info, symbols, gtf_records
-
-def loadEnsemblPre(proc_ensembl_file):
-    gtf_records = dict()
-    symbols = dict()
-    meta_info = None
-    with open(proc_ensembl_file, "r", encoding = "utf-8") as inp:
-        for line in inp:
-            srec = json.loads(line)
-            if "meta" in srec:
-                meta_info = srec
-                continue
-            gene_name, rec_list = srec["symbol"], srec["gtf"]
-            assert gene_name not in symbols, (
-                f"PreGTF: duplication gene_name {gene_name}")
-            symbols[gene_name] = rec_list
-            for rec in rec_list:
-                gene_id = rec["gene_id"]
-                assert gene_id not in gtf_records, (
-                    f"PreGTF: duplication of gene_id: {gene_id}")
-                gtf_records[gene_id] = rec
-    print(f"GTF result restored from {proc_ensembl_file}", file = sys.stderr)
     return meta_info, symbols, gtf_records
 
 #===============================================
@@ -214,11 +177,7 @@ def crossData(gtf_symbols, gtf_records, hgnc_symbols):
     return records
 
 #===============================================
-if run_args.mode == "full":
-    meta_rec, symbols, gtf_records = prepareEnsembl(
-        run_args.ensembl, run_args.pregtf)
-else:
-    meta_rec, symbols, gtf_records = loadEnsemblPre(run_args.pregtf)
+meta_rec, symbols, gtf_records = prepareEnsembl(run_args.ensembl)
 
 hgnc_symbols, hgnc_version = loadHGNC(run_args.hgnc)
 meta_rec["meta"].append(hgnc_version)
