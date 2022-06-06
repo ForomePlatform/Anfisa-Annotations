@@ -55,7 +55,7 @@ def parseList(fname):
 
 #=====================================
 def parseCSV(fname):
-    symbols = set
+    symbols = set()
     bad_names = []
     with open(fname, "r", encoding = "utf-8") as inp:
         rd = csv.DictReader(inp)
