@@ -2,8 +2,9 @@
 
 1. Edit `env.sh` file and define all parameters for the run. The parameters that may change between different builds: 
 
-		VEP_RELEASE=release_103         # Ensemble VEP release
+		VEP_RELEASE=release_105.0       # Ensemble VEP release
 		VEP_ASSEMBLY=GRCh38             # The homo-sapiens species genome assembly
+        VEP_PORT=5306                   # vep docker image specific port
 
 2. Launch build script - this should be done only once for a particular release and genome, when it is required to download the new cache and fasta files. They will be saved into a local directory, defined by `$VEP_CACHE_DIR` variable (`/data/vep/vep-cache-${VEP_ASSEMBLY}-${VEP_RELEASE}` by default).
 

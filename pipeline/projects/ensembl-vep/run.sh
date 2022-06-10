@@ -43,7 +43,7 @@ else
             --force_overwrite \
             --merged \
             --json \
-            --port 3337 \
+             --port ${VEP_PORT} \
             --input_file /data/${INPUT_FILE} \
             --output_file /data/${OUTPUT_FILE} \
             --plugin ExACpLI,/opt/vep/.vep/Plugins/ExACpLI_values.txt \
