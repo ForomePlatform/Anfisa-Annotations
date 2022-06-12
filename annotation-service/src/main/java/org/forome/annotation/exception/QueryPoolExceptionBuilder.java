@@ -18,8 +18,8 @@
 
 package org.forome.annotation.exception;
 
-import com.infomaximum.database.exception.DatabaseException;
-import com.infomaximum.querypool.ExceptionBuilder;
+import org.forome.database.exception.DatabaseException;
+import org.forome.querypool.ExceptionBuilder;
 
 public class QueryPoolExceptionBuilder implements ExceptionBuilder {
 

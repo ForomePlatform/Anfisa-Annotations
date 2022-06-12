@@ -18,7 +18,7 @@
 
 package org.forome.annotation.service.database.rocksdb.favor;
 
-import com.infomaximum.database.exception.DatabaseException;
+import org.forome.database.exception.DatabaseException;
 import org.forome.annotation.utils.compression.GZIPCompression;
 import org.forome.astorage.core.rocksdb.RocksDBDatabase;
 import org.forome.astorage.core.utils.bits.IntegerBits;

@@ -18,8 +18,8 @@
 
 package org.forome.annotation.makedatabase;
 
-import com.infomaximum.database.utils.TypeConvert;
-import com.infomaximum.rocksdb.RocksDBProvider;
+import org.forome.database.utils.TypeConvert;
+import org.forome.rocksdb.RocksDBProvider;
 import org.forome.astorage.core.packer.PackInterval;
 import org.forome.astorage.core.source.SourceDatabase;
 import org.forome.core.struct.Interval;

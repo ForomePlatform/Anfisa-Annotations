@@ -18,9 +18,9 @@
 
 package org.forome.annotation.makefavordatabase.validation.main;
 
-import com.infomaximum.database.exception.DatabaseException;
-import com.infomaximum.database.utils.TypeConvert;
-import com.infomaximum.rocksdb.RocksDBProvider;
+import org.forome.database.exception.DatabaseException;
+import org.forome.database.utils.TypeConvert;
+import org.forome.rocksdb.RocksDBProvider;
 import org.rocksdb.*;
 import org.rocksdb.util.SizeUnit;
 import org.slf4j.Logger;

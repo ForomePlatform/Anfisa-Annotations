@@ -18,7 +18,7 @@
 
 package org.forome.annotation.service.database;
 
-import com.infomaximum.database.exception.DatabaseException;
+import org.forome.database.exception.DatabaseException;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 import org.forome.annotation.config.connector.base.DatabaseConfigConnector;
 import org.forome.annotation.config.database.DatabaseConfig;

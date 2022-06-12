@@ -18,7 +18,7 @@
 
 package org.forome.annotation;
 
-import com.infomaximum.querypool.*;
+import org.forome.querypool.*;
 import org.forome.annotation.config.Config;
 import org.forome.annotation.config.ServiceConfig;
 import org.forome.annotation.data.DatabaseConnector;

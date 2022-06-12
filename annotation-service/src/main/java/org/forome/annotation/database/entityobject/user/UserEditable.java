@@ -18,7 +18,7 @@
 
 package org.forome.annotation.database.entityobject.user;
 
-import com.infomaximum.database.domainobject.DomainObjectEditable;
+import org.forome.database.domainobject.DomainObjectEditable;
 import org.forome.annotation.utils.RandomUtils;
 
 public class UserEditable extends UserReadable implements DomainObjectEditable {

@@ -18,7 +18,7 @@
 
 package org.forome.annotation.service.source.internal;
 
-import com.infomaximum.database.exception.DatabaseException;
+import org.forome.database.exception.DatabaseException;
 import org.forome.annotation.config.source.SourceInternalConfig;
 import org.forome.annotation.service.source.DataSource;
 import org.forome.annotation.service.source.external.ExternalDataSource;

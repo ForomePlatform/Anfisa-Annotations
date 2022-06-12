@@ -18,9 +18,9 @@
 
 package org.forome.annotation.controller;
 
-import com.infomaximum.querypool.Query;
-import com.infomaximum.querypool.QueryTransaction;
-import com.infomaximum.querypool.ResourceProvider;
+import org.forome.querypool.Query;
+import org.forome.querypool.QueryTransaction;
+import org.forome.querypool.ResourceProvider;
 import net.minidev.json.JSONObject;
 import org.forome.annotation.Service;
 import org.forome.annotation.controller.utils.ResponseBuilder;

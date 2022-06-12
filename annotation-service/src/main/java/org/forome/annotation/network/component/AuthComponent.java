@@ -18,10 +18,10 @@
 
 package org.forome.annotation.network.component;
 
-import com.infomaximum.database.domainobject.filter.HashFilter;
-import com.infomaximum.querypool.QueryTransaction;
-import com.infomaximum.querypool.ReadableResource;
-import com.infomaximum.querypool.ResourceProvider;
+import org.forome.database.domainobject.filter.HashFilter;
+import org.forome.querypool.QueryTransaction;
+import org.forome.querypool.ReadableResource;
+import org.forome.querypool.ResourceProvider;
 import org.forome.annotation.database.entityobject.user.UserReadable;
 
 import java.util.Arrays;

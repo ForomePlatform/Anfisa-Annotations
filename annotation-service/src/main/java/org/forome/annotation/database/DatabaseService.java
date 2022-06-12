@@ -18,12 +18,12 @@
 
 package org.forome.annotation.database;
 
-import com.infomaximum.database.domainobject.DomainObjectSource;
-import com.infomaximum.database.maintenance.ChangeMode;
-import com.infomaximum.database.maintenance.SchemaService;
-import com.infomaximum.database.provider.DBProvider;
-import com.infomaximum.database.schema.Schema;
-import com.infomaximum.rocksdb.RocksDataBaseBuilder;
+import org.forome.database.domainobject.DomainObjectSource;
+import org.forome.database.maintenance.ChangeMode;
+import org.forome.database.maintenance.SchemaService;
+import org.forome.database.provider.DBProvider;
+import org.forome.database.schema.Schema;
+import org.forome.rocksdb.RocksDataBaseBuilder;
 import org.forome.annotation.Service;
 import org.forome.annotation.database.entityobject.user.UserReadable;
 

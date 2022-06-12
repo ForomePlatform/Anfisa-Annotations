@@ -18,7 +18,7 @@
 
 package org.forome.annotation.exception;
 
-import com.infomaximum.database.exception.DatabaseException;
+import org.forome.database.exception.DatabaseException;
 import net.minidev.json.parser.ParseException;
 import org.forome.annotation.struct.variant.Variant;
 

@@ -18,10 +18,10 @@
 
 package org.forome.annotation.database.entityobject.user;
 
-import com.infomaximum.database.anotation.Entity;
-import com.infomaximum.database.anotation.Field;
-import com.infomaximum.database.anotation.HashIndex;
-import com.infomaximum.database.domainobject.DomainObject;
+import org.forome.database.anotation.Entity;
+import org.forome.database.anotation.Field;
+import org.forome.database.anotation.HashIndex;
+import org.forome.database.domainobject.DomainObject;
 
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
