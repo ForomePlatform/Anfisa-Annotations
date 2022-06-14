@@ -18,7 +18,7 @@
 #  limitations under the License.
 #
 
-import sys, json, logging, signal, contextlib
+import sys, json, bson, logging, signal, contextlib
 
 from .a_storage import AStorage
 from .a_array import AArray
@@ -87,12 +87,17 @@ class AStorageApp:
         elif rq_path == "/meta":
             report = cls.sConfig["service"]["meta"]
         if report is not None:
-            if "indent" in rq_args:
+            mode = "json"
+            if rq_args.get("bson") not in (None, "0"):
+                cnt = bson.encode(report)
+                mode = "bson"
+            elif "indent" in rq_args:
                 cnt = json.dumps(report, indent = 4,
                     sort_keys = True, ensure_ascii = False)
             else:
                 cnt = json.dumps(report, ensure_ascii = False)
-            return serv_h.makeResponse(mode = "json", content = cnt)
+            return serv_h.makeResponse(mode = mode, content = cnt,
+                without_decoding = (mode == "bson"))
         return serv_h.makeResponse("Page not found",
             error = 404)
 

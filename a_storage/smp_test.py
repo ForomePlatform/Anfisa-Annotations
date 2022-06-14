@@ -19,6 +19,8 @@ parser.add_argument("-s", "--schema", help = "Schema name")
 parser.add_argument("-a", "--array", help = "Array name")
 parser.add_argument("-u", "--url", help = "Service url",
     default = "http://localhost:8290/")
+parser.add_argument("-b", "--bson", help = "BSON mode",
+    default = "0")
 parser.add_argument("--threads", type = int, default = 5,
     help = "Count of threads")
 parser.add_argument("--portions", type = int, default = 10,
@@ -35,11 +37,13 @@ date_started = datetime.now()
 logging.info("Started at " + str(date_started))
 #=====================================
 class SchemaSmpH:
-    def __init__(self, config, array_name, schema_name, db_name, bulk_mode):
+    def __init__(self, config, array_name, schema_name, db_name,
+            bson_mode, bulk_mode):
         self.mArrayName = array_name
         self.mSchemaName = schema_name
         self.mDbName = db_name
         self.mSamples = []
+        self.mBsonMode = bson_mode
         self.mBulkMode = bulk_mode
         self.mFasta = "hg19" if "hg19" in array_name.lower() else "hg38"
         with open(config["schema-dir"] + "/" + self.mDbName
@@ -76,7 +80,8 @@ class SchemaSmpH:
             special_last_mode = False):
         is_ok = True
         if self.mBulkMode:
-            request = {"fasta": self.mFasta, "variants": []}
+            request = {"fasta": self.mFasta,
+                "variants": [], "bson": self.mBsonMode}
             for smp_idx in range(smp_from, smp_to):
                 chrom, pos = self.mSamples[smp_idx][0]
                 request["variants"].append({"chrom": chrom, "pos": pos})
@@ -93,7 +98,8 @@ class SchemaSmpH:
             for smp_idx in range(smp_from, smp_to):
                 chrom, pos = self.mSamples[smp_idx][0]
                 test_rec = rest_agent.call(None, "GET",
-                    'get?array=%s&loc=%s:%d' % (self.mArrayName, chrom, pos))
+                    f'get?array={self.mArrayName}'
+                    f'&loc={chrom}:{pos}&bson={self.mBsonMode}')
                 is_ok &= self.testRec(smp_idx, test_rec)
         return is_ok
 
@@ -126,7 +132,8 @@ for array_name, array_info in config["service"]["arrays"].items():
         if args.schema and schema_name != args.schema:
             continue
         sSmpSeq.append(SchemaSmpH(config, array_name, schema_name,
-            s_info.get("dbname", schema_name), args.mode != "simple"))
+            s_info.get("dbname", schema_name), args.bson,
+            args.mode != "simple"))
 
 if len(sSmpSeq) == 0:
     opt_rep = []
