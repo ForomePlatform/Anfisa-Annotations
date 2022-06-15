@@ -18,12 +18,12 @@
 #  limitations under the License.
 #
 
-import sys, json, pybson, logging, signal, contextlib
+import sys, json, logging, signal, contextlib
 
 from .a_storage import AStorage
 from .a_array import AArray
 from .a_collect import ACollect
-
+from forome_tools.bson_adapter import BsonAdapter
 #===============================================
 def terminateAll(sig, frame):
     AStorageApp.terminate(sig, frame)
@@ -88,8 +88,11 @@ class AStorageApp:
             report = cls.sConfig["service"]["meta"]
         if report is not None:
             mode = "json"
-            if rq_args.get("bson") not in (None, "0"):
-                cnt = pybson.dumps(report)
+            bson_arg = rq_args.get("bson")
+            if bson_arg is None and '@request' in rq_args:
+                bson_arg = rq_args['@request'].get("bson")
+            if bson_arg not in (None, "0"):
+                cnt = BsonAdapter.encode(report)
                 mode = "bson"
             elif "indent" in rq_args:
                 cnt = json.dumps(report, indent = 4,

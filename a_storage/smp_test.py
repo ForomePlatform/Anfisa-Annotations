@@ -60,6 +60,7 @@ class SchemaSmpH:
             assert cur_key is None
         logging.info("Schema samples loaded for %s/%s: %d samples"
             % (self.mArrayName, self.mSchemaName, len(self.mSamples)))
+        logging.info(f"Bulk={self.mBulkMode} Bson={self.mBsonMode}")
         if self.mBulkMode:
             self.mSamples.sort()
 
