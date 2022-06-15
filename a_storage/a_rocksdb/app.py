@@ -18,7 +18,7 @@
 #  limitations under the License.
 #
 
-import sys, json, bson, logging, signal, contextlib
+import sys, json, pybson, logging, signal, contextlib
 
 from .a_storage import AStorage
 from .a_array import AArray
@@ -89,7 +89,7 @@ class AStorageApp:
         if report is not None:
             mode = "json"
             if rq_args.get("bson") not in (None, "0"):
-                cnt = bson.encode(report)
+                cnt = pybson.dumps(report)
                 mode = "bson"
             elif "indent" in rq_args:
                 cnt = json.dumps(report, indent = 4,
