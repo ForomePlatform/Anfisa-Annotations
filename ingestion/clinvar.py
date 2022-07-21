@@ -94,6 +94,9 @@ INSTR_CREATE = """CREATE TABLE IF NOT EXISTS ClinVar_variant_summary(
     OtherIDs                 TEXT,
     SubmitterCategories      INT(11),
     VariationID              INT(11),
+    PositionVCF              INT(11),
+    ReferenceAlleleVCF       LONGTEXT,
+    AlternateAlleleVCF       LONGTEXT,
     INDEX index1(AlleleID),
     INDEX c_idx(Chromosome),
     INDEX p_idx(Start, Stop),
@@ -130,7 +133,10 @@ COLUMNS = [
     "TestedInGTR",
     "OtherIDs",
     "SubmitterCategories",
-    "VariationID"]
+    "VariationID",
+    "PositionVCF",
+    "ReferenceAlleleVCF",
+    "AlternateAlleleVCF"]
 
 INSTR_INSERT = "INSERT INTO ClinVar_variant_summary (%s) VALUES (%s)" % (
     ", ".join(COLUMNS),
