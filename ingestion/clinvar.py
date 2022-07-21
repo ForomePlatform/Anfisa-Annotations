@@ -5,10 +5,13 @@ import csv
 import gzip
 import mysql.connector
 import time
+import sys
 
 from util import execute_insert, reportTime
 
 from parser_xml import XML_File
+
+csv.field_size_limit(sys.maxsize)
 #============= XML table ================
 
 
