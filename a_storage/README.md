@@ -138,7 +138,7 @@ ${WORK} — Project root directory (/projects/AStorage)
 > As noted above, the title of section and schema are usually the same. However, it is not always. In particular, when/if you want to re-create the section, without disturbing the current working copy, you can create a section with a new name with an existing schema name in it.
 
 ### Programs
-Module code is placed in Anfisa-Annotations repository in `a_storage` top directory. At the moment all this is only available at the brunch `origin/dev-ingestion`. Currently, to run utilities and services you need to specify in PYTHONPATH the path to deployed anfisa project - it uses utils directory. In the short term, this dependence should be transformed into a ‘wheel’, deployed in a virtual environment.
+Module code is placed in Anfisa-Annotations repository in `a_storage` top directory. Currently, to run utilities and services you need to specify in PYTHONPATH the path to deployed anfisa project - it uses utils directory. In the short term, this dependence should be transformed into a ‘wheel’, deployed in a virtual environment.
 
 The launch must be carried out in a specially designed virtual environment; a correctly designed and seemingly accessible environment is located on the server in the `/home/trifon/.forome-venv` directory.
 
@@ -283,7 +283,6 @@ To install it in the project environment, you need:
 As a result, the plainrocks package will be installed in the virtual environment.It’s all you need to make AStorage work.
 
 ### A2. Project structure, brief description for porting to Java 
-> Attention! Actual branch is **dev-ingestion.1**
 
 Below **(\*)** denotes the main files that need a port to Java in the first place.
 
