@@ -4,7 +4,9 @@
 
 set -euxo pipefail
 
-source env.sh
+VEP_SETUP_DIR=$( cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+source ${VEP_SETUP_DIR}/env.sh
 
 if [ -d $VEP_CACHE_DIR ]; then
     echo "Forome VEP setup is already built. Remove $VEP_CACHE_DIR cache directory to generate a new build."
